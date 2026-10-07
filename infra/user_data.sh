@@ -116,9 +116,27 @@ for attempt in $(seq 1 40); do
   sleep 15
 done
 
-echo "=== refresh unit ==="
+echo "=== refresh script and unit ==="
 # `systemctl start cashmatch-refresh` pulls the newest images and restarts.
 # That is the whole deploy step once the infrastructure exists.
+#
+# The body lives in a script rather than inline in the unit: a systemd
+# ExecStartPre that has to rediscover the region from instance metadata needs
+# three levels of nested quoting to do it, and user_data already knows the
+# region. Writing the script first also means this section is the last thing
+# the bootstrap does, so a failure earlier on cannot leave a unit that
+# references a script that was never written.
+cat > /opt/cashmatch/refresh.sh <<EOF
+#!/usr/bin/env bash
+# Pull the newest images and restart. Called by cashmatch-refresh.service.
+set -euo pipefail
+cd /opt/cashmatch
+aws ecr get-login-password --region "$REGION" | docker login --username AWS --password-stdin "$ACCOUNT.dkr.ecr.$REGION.amazonaws.com"
+docker compose pull
+docker compose up -d
+EOF
+chmod 0750 /opt/cashmatch/refresh.sh
+
 cat > /etc/systemd/system/cashmatch-refresh.service <<'EOF'
 [Unit]
 Description=Pull the latest CashMatch images and restart
@@ -127,10 +145,7 @@ Requires=docker.service
 
 [Service]
 Type=oneshot
-WorkingDirectory=/opt/cashmatch
-ExecStartPre=/bin/bash -c 'aws ecr get-login-password --region $(curl -s http://169.254.169.254/latest/meta-data/placement/region -H "X-aws-ec2-metadata-token: $(curl -s -X PUT http://169.254.169.254/latest/api/token -H \"X-aws-ec2-metadata-token-ttl-seconds: 60\")") | docker login --username AWS --password-stdin $(docker compose config --images | head -1 | cut -d/ -f1)'
-ExecStart=/usr/bin/docker compose pull
-ExecStartPost=/usr/bin/docker compose up -d
+ExecStart=/opt/cashmatch/refresh.sh
 EOF
 systemctl daemon-reload
 

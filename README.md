@@ -14,7 +14,7 @@ matcher cannot read:
 | Review rate | 13.0% |
 | Unapplied rate | 5.1% |
 
-489 tests passing. No API key and no network required to run any of them.
+491 tests passing. No API key and no network required to run any of them.
 
 **Live:** <http://13.235.237.109> — deployed to AWS from Terraform. How that was done, and
 what broke doing it: [the deployment record](https://claude.ai/code/artifact/7e942992-9053-4a62-9ace-b7dc67062fb0)
@@ -154,7 +154,7 @@ make demo                     # generate → extract → decide → evaluate
 | | |
 |---|---|
 | **Review UI** | <http://localhost:5173> |
-| API docs | <http://localhost:8000/docs> |
+| API docs | <http://localhost:8000/api/docs> |
 | Health | <http://localhost:8000/health/db> |
 
 Tear down with `docker compose down -v`.
@@ -268,7 +268,7 @@ Three things the model refuses to flatter:
 | **Confidence normalised over *applicable* signals** | A customer who never sends advice is not thereby a worse match | Subtle — and it cost 65 points of auto-match rate before it was found |
 | **A guessed claim-bearer goes to review** | Every error in the first evaluation was a multi-invoice short-pay attributed to the wrong invoice within the right set | 5 points of auto-match rate, traded for all 19 errors |
 | **Suggest-only by default** | A first deployment runs this way for weeks while the client watches precision | Posting is a second, explicit step |
-| **SQLite for tests, Postgres for deploy** | 489 tests in 35 seconds with no Docker | A portable schema, designed in from the first commit |
+| **SQLite for tests, Postgres for deploy** | 491 tests in 35 seconds with no Docker | A portable schema, designed in from the first commit |
 | **The LLM is optional** | `LLM_MODE=mock` by default; a cold clone runs everything with no credentials | Mock mode is not a benchmark of model quality |
 
 ---
@@ -334,7 +334,7 @@ backend/cashmatch/
   api/            twelve REST endpoints
 backend/config/   scenarios.yml (dataset shape) · matching.yml (engine tuning)
 backend/alembic/  versioned schema migrations
-backend/tests/    489 tests, SQLite, no Docker
+backend/tests/    491 tests, SQLite, no Docker
 frontend/         React + Vite + Tailwind review UI, nginx-served
 data/             generated data and the answer key (gitignored)
 ```

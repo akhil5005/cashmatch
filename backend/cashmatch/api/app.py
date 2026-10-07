@@ -38,6 +38,15 @@ def create_app() -> FastAPI:
         title="CashMatch",
         version=__version__,
         description=DESCRIPTION,
+        # Everything the API serves lives under /api, documentation included.
+        # In production nginx proxies /api to this app and serves the
+        # single-page UI on every other path -- so FastAPI's default /docs is
+        # unreachable there, and the SPA quietly answers with index.html
+        # instead of 404ing, which is a gap nothing complains about.
+        # Keeping one prefix also means the UI never has to avoid a path name.
+        docs_url="/api/docs",
+        redoc_url="/api/redoc",
+        openapi_url="/api/openapi.json",
         openapi_tags=[
             {"name": "metrics", "description": "Dashboard figures."},
             {"name": "results", "description": "The review queue."},

@@ -608,9 +608,24 @@
             <tr><td class="key">http://13.235.237.109</td><td>The review queue and dashboard</td></tr>
             <tr><td class="key">/api/docs</td><td>Interactive OpenAPI documentation</td></tr>
             <tr><td class="key">/api/metrics</td><td>Dashboard figures as JSON</td></tr>
-            <tr><td class="key">/health/db</td><td>Readiness &mdash; round-trips a real query</td></tr>
+            <tr><td class="key">/health, /health/db</td><td>Liveness and readiness &mdash; reached
+              inside the container network by the Compose health check, not published</td></tr>
           </tbody>
         </table>
+      </div>
+
+      <div class="callout caution">
+        <p><strong>The docs page was unreachable, and nothing said so.</strong> FastAPI mounts
+          its documentation at <code>/docs</code> by default. nginx proxies only
+          <code>/api</code> and serves the single-page UI on every other path &mdash; and
+          because a SPA answers unknown paths with <code>index.html</code> rather than a 404,
+          <code>/docs</code> returned the review UI with HTTP 200. A monitor watching status
+          codes would have seen nothing wrong.</p>
+        <p>Same shape as the empty database below: a green response over the wrong content.
+          Fixed by mounting the docs under <code>/api/docs</code> &mdash; one prefix for
+          everything the API serves, so the UI never has to avoid a path name either &mdash;
+          and by a test that fails if either the new path stops answering or the old default
+          comes back.</p>
       </div>
 
       <div class="callout">
@@ -1086,7 +1101,7 @@ docker compose exec api python -m cashmatch.cli apply</code></pre>
             </tr>
             <tr>
               <td class="key">CI/CD</td>
-              <td>GitHub Actions running the 489 tests, building, pushing to ECR via OIDC
+              <td>GitHub Actions running the 491 tests, building, pushing to ECR via OIDC
                 rather than long-lived keys, and deploying on green. The repository is
                 already public and the test suite needs no credentials, so this is close to
                 free.</td>
