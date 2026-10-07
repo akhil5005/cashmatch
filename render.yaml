@@ -4,15 +4,21 @@
 # the React bundle as a static site that rewrites /api to the API.
 #
 # Why a static site rather than the nginx container used locally: Render
-# serves static assets from its own CDN for free and handles TLS, so the
-# nginx layer earns nothing here. The rewrite rule does the same job as the
-# `proxy_pass` in nginx.conf — one origin for the browser, no CORS.
+# serves static assets from its own CDN for free and terminates TLS, so the
+# nginx layer earns nothing here. The rewrite rule below does the same job as
+# `proxy_pass` in nginx.conf — one origin for the browser, so CORS never
+# enters the picture.
 #
-# Render builds from this repository on its own machines, which is the point:
-# nothing large is uploaded from a developer laptop.
+# Render builds from this repository on its own machines. That is the point:
+# nothing large is uploaded from a laptop.
+#
+# Service names carry a suffix because `<name>.onrender.com` is a global
+# namespace. A collision would make Render append a random suffix and quietly
+# break the rewrite destination below, which is the one part of this file
+# that has to match a hostname exactly.
 
 databases:
-  - name: cashmatch-db
+  - name: cashmatch-db-akhil
     databaseName: cashmatch
     user: cashmatch
     plan: free
@@ -21,9 +27,8 @@ databases:
 services:
   # --- the API ------------------------------------------------------------
   - type: web
-    name: cashmatch-api
+    name: cashmatch-api-akhil
     runtime: docker
-    repo: https://github.com/akhil5005/cashmatch
     dockerfilePath: ./backend/Dockerfile.prod
     dockerContext: ./backend
     plan: free
@@ -35,10 +40,10 @@ services:
       # `postgresql+psycopg://` form SQLAlchemy 2.x and psycopg 3 require.
       - key: DATABASE_URL
         fromDatabase:
-          name: cashmatch-db
+          name: cashmatch-db-akhil
           property: connectionString
-      # Mock mode exercises the whole extraction pipeline with no API key
-      # and no network. A public demo has no business holding a live key.
+      # Mock mode exercises the whole extraction pipeline with no API key and
+      # no network. A public demo has no business holding a live key.
       - key: LLM_MODE
         value: mock
       - key: DATA_DIR
@@ -48,17 +53,17 @@ services:
 
   # --- the review UI ------------------------------------------------------
   - type: web
-    name: cashmatch-ui
+    name: cashmatch-ui-akhil
     runtime: static
-    repo: https://github.com/akhil5005/cashmatch
     buildCommand: cd frontend && npm ci && npm run build
     staticPublishPath: ./frontend/dist
     autoDeploy: true
     routes:
-      # Same-origin /api, so the browser never needs CORS.
+      # Same-origin /api. If the API service ends up on a different hostname,
+      # this is the single line to change.
       - type: rewrite
         source: /api/*
-        destination: https://cashmatch-api.onrender.com/api/*
+        destination: https://cashmatch-api-akhil.onrender.com/api/*
       # Single-page app: any unknown path is a client route, not a 404.
       - type: rewrite
         source: /*
