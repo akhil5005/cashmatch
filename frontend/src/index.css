@@ -1,0 +1,13 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-slate-50 text-ink antialiased;
+  }
+  /* Digits that line up in columns, which is most of this interface. */
+  .tnum {
+    font-variant-numeric: tabular-nums;
+  }
+}

@@ -1,0 +1,72 @@
+# Render blueprint.
+#
+# Three services: a managed Postgres, the API as a Docker web service, and
+# the React bundle as a static site that rewrites /api to the API.
+#
+# Why a static site rather than the nginx container used locally: Render
+# serves static assets from its own CDN for free and handles TLS, so the
+# nginx layer earns nothing here. The rewrite rule does the same job as the
+# `proxy_pass` in nginx.conf — one origin for the browser, no CORS.
+#
+# Render builds from this repository on its own machines, which is the point:
+# nothing large is uploaded from a developer laptop.
+
+databases:
+  - name: cashmatch-db
+    databaseName: cashmatch
+    user: cashmatch
+    plan: free
+    region: singapore
+
+services:
+  # --- the API ------------------------------------------------------------
+  - type: web
+    name: cashmatch-api
+    runtime: docker
+    repo: https://github.com/akhil5005/cashmatch
+    dockerfilePath: ./backend/Dockerfile.prod
+    dockerContext: ./backend
+    plan: free
+    region: singapore
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      # Render emits `postgres://`; Settings normalises it to the
+      # `postgresql+psycopg://` form SQLAlchemy 2.x and psycopg 3 require.
+      - key: DATABASE_URL
+        fromDatabase:
+          name: cashmatch-db
+          property: connectionString
+      # Mock mode exercises the whole extraction pipeline with no API key
+      # and no network. A public demo has no business holding a live key.
+      - key: LLM_MODE
+        value: mock
+      - key: DATA_DIR
+        value: /data
+      - key: LOG_LEVEL
+        value: INFO
+
+  # --- the review UI ------------------------------------------------------
+  - type: web
+    name: cashmatch-ui
+    runtime: static
+    repo: https://github.com/akhil5005/cashmatch
+    buildCommand: cd frontend && npm ci && npm run build
+    staticPublishPath: ./frontend/dist
+    autoDeploy: true
+    routes:
+      # Same-origin /api, so the browser never needs CORS.
+      - type: rewrite
+        source: /api/*
+        destination: https://cashmatch-api.onrender.com/api/*
+      # Single-page app: any unknown path is a client route, not a 404.
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    headers:
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: X-Frame-Options
+        value: DENY

@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+htmlcov/
+.coverage
+
+# Environment
+.env
+.env.local
+
+# Generated data and the ground-truth answer key.
+# Both are reproducible from a seed, and neither belongs in version control.
+data/generated/*
+data/ground_truth/*
+!data/**/.gitkeep
+
+# Node / frontend
+node_modules/
+frontend/dist/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

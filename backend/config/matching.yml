@@ -1,0 +1,147 @@
+# ---------------------------------------------------------------------------
+# CashMatch matching engine configuration.
+#
+# These knobs control *how the matcher behaves*, as opposed to
+# scenarios.yml which controls *what the data looks like*. Keeping them apart
+# matters: tuning the engine and changing the problem are different
+# experiments, and conflating them makes a result impossible to attribute.
+#
+# Phase 5's confidence weights and auto-apply thresholds will live in this
+# file too, beside the strategies they score.
+# ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# Phase 5: turning signals into a confidence, and a confidence into a decision.
+#
+# This block is the one a client actually negotiates over. The weights say
+# what the engine believes; the thresholds say how much belief is enough to
+# post money without a human. Moving `auto_apply` trades automation against
+# error directly, and Phase 6 reports that curve so the trade is made with
+# numbers rather than nerve.
+# ---------------------------------------------------------------------------
+scoring:
+  # Relative importance of each signal. Must sum to 1.0.
+  weights:
+    # Did an invoice reference actually resolve to an open item? By far the
+    # strongest evidence available: the customer named the invoice.
+    reference_match: 0.34
+    # How cleanly does the money land -- exact, short-paid, part-paid?
+    amount_match: 0.26
+    # How sure are we who paid? Exact name beats alias beats fuzzy.
+    customer_identity: 0.18
+    # Does the customer's own advice agree, and did its arithmetic tie?
+    remittance_agreement: 0.14
+    # Is the payment arriving when these invoices would plausibly be settled?
+    date_proximity: 0.08
+
+  thresholds:
+    # At or above this, post the cash with no human. Set high on purpose:
+    # a wrong auto-match costs hours to unwind, a review costs minutes.
+    auto_apply: 0.90
+    # Below this, do not even put it in the queue. An analyst's day is
+    # finite, and a 30%-confidence suggestion costs more attention than it
+    # saves. The candidates are still stored in the explanation.
+    review_floor: 0.45
+
+  penalties:
+    # Several readings tie and nothing separates them. Never auto-apply an
+    # ambiguity -- this multiplier is sized to push any tie below the
+    # auto_apply threshold on its own.
+    ambiguous: 0.55
+    # The advice named these invoices but its amounts did not reconcile.
+    unreconciled_advice: 0.92
+    # The matcher could not place every paise that arrived.
+    residual_cash: 0.85
+    # A short-pay across several invoices where nothing says which one the
+    # claim sits on. The matcher guesses the smallest invoice that can
+    # absorb the gap -- a reasonable prior, and sometimes simply not what
+    # happened. Every wrong auto-match in the first evaluation was this.
+    # Sized to drop the guess into the review queue rather than post it.
+    guessed_claim_bearer: 0.60
+
+  date_proximity:
+    # Payment within this many days of the due date scores full marks.
+    ideal_days: 35
+    # Beyond this, the date tells us nothing and the signal scores zero.
+    zero_days: 200
+
+customer_identification:
+  # rapidfuzz score (0-100) a payer name must reach to be accepted.
+  fuzzy_min_score: 86
+  # ...and it must beat the runner-up by this margin. Two customers scoring
+  # 90 and 89 is not a match, it is an ambiguity: refuse rather than guess.
+  fuzzy_margin: 5
+  # Scorer from rapidfuzz.fuzz. WRatio handles truncation and token
+  # reordering without being as permissive as token_set_ratio, which would
+  # happily match "Balaji Traders" to every customer containing both words.
+  fuzzy_scorer: WRatio
+
+# Extracted remittance advice (Phase 4). Runs ahead of the narration
+# reference step because it is a stronger signal: the customer wrote it
+# deliberately, names invoices in full, and usually states the split.
+remittance:
+  enabled: true
+  # Require the extracted amounts to tie to the bank credit before the
+  # advice may lead the match. Off by default: an advice document that does
+  # not reconcile still names the right invoices surprisingly often, and
+  # settle() verifies the arithmetic independently before anything is
+  # proposed. Turn it on for a client who wants maximum caution.
+  require_reconciled: false
+
+reference:
+  enabled: true
+  # A token needs at least this many digits before it is considered an
+  # invoice reference, so "NEFT" and "CR" are never mistaken for one.
+  min_digits: 2
+  # Accept a bare number ("42") as a reference to INV-00042. Loosens recall
+  # on typo'd narrations at some risk of false positives; the candidate pool
+  # is restricted to open items, which keeps that risk small.
+  allow_bare_numeric: true
+  # Reject implausibly long digit runs: account numbers, UTRs, phone numbers.
+  max_digits: 8
+
+amount:
+  # Absolute slack when comparing a payment against a candidate total.
+  # Rs. 1.00 absorbs bank rounding without opening the door to real gaps.
+  tolerance_paise: 100
+
+date_window:
+  # An invoice is a candidate for a payment only inside this window. A bill
+  # from fourteen months ago is not what this transfer settles, and excluding
+  # it is the cheapest prune available before subset-sum runs.
+  days_before_payment: 210
+  days_after_payment: 20
+
+subset_sum:
+  enabled: true
+  # Cap on how many invoices one payment may bundle. Bounds the search at
+  # C(n, k) instead of 2^n. A genuine 7-invoice bundle will be missed and go
+  # to review -- the correct failure, versus a confident wrong answer.
+  max_combination_size: 5
+  # Hard cap on the candidate pool, taking the invoices closest in time to
+  # the payment. Protects the key accounts with 150+ open items.
+  max_candidate_invoices: 45
+  # Stop after this many distinct sets tie to the amount; more than a handful
+  # means the payment is ambiguous, not that we should keep looking.
+  max_solutions: 5
+  # Abort the search after this many combinations examined, so one pathological
+  # account cannot stall a batch run.
+  combination_budget: 400000
+
+short_pay:
+  enabled: true
+  # Short-pay search is more expensive per node because it targets a band
+  # rather than a point, so it gets a tighter size cap.
+  max_combination_size: 3
+  max_solutions: 3
+  combination_budget: 200000
+  # A gap counts as a plausible deduction only inside this band, measured as
+  # a percentage of THE INVOICE CARRYING THE CLAIM -- not of the remittance
+  # total. A Rs. 4,900 claim is 8.6% of a Rs. 56,865 invoice (routine) but
+  # 0.45% of the Rs. 10.9 lakh remittance that invoice sat inside.
+  min_deduction_pct: 0.5
+  max_deduction_pct: 15.0
+  # Absolute ceiling regardless of percentage, as a backstop against calling
+  # a very large gap a "claim". Rs. 1,50,000 covers a 15% deduction on the
+  # largest invoice in this book; size it to the client's invoice range.
+  max_deduction_paise: 15000000

@@ -1,0 +1,60 @@
+# CashMatch local stack: Postgres + the FastAPI service.
+#
+#   docker compose up --build       start everything
+#   docker compose down -v          stop and wipe the database volume
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-cashmatch}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cashmatch}
+      POSTGRES_DB: ${POSTGRES_DB:-cashmatch}
+    ports:
+      - "5432:5432"
+    volumes:
+      - cashmatch_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      # The API must not start before Postgres can actually accept queries.
+      # `depends_on: service_healthy` below waits on this.
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-cashmatch} -d ${POSTGRES_DB:-cashmatch}"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build:
+      context: ./backend
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://cashmatch:cashmatch@db:5432/cashmatch}
+      RANDOM_SEED: ${RANDOM_SEED:-42}
+      DATA_DIR: /data
+      SCENARIO_CONFIG: /app/config/scenarios.yml
+      LLM_MODE: ${LLM_MODE:-mock}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    ports:
+      - "8000:8000"
+    volumes:
+      # Bind-mounted for development so --reload picks up edits without a rebuild.
+      - ./backend:/app
+      - ./data:/data
+    depends_on:
+      db:
+        condition: service_healthy
+    command: >
+      sh -c "alembic upgrade head &&
+             uvicorn cashmatch.api.app:app --host 0.0.0.0 --port 8000 --reload"
+
+  ui:
+    build:
+      context: ./frontend
+    ports:
+      - "5173:80"
+    depends_on:
+      - api
+    # nginx proxies /api to the api service, so the browser only ever talks
+    # to one origin and CORS never enters the picture in production.
+
+volumes:
+  cashmatch_pgdata:

@@ -1,0 +1,96 @@
+# ---------------------------------------------------------------------------
+# CashMatch synthetic dataset configuration.
+#
+# This file is the knob you turn to change what the matcher is up against.
+# Raise `missing_reference` to 40 and re-run `cashmatch generate` to see the
+# auto-match rate fall; that experiment is the point of keeping it in YAML
+# rather than in code.
+#
+# Every percentage block must sum to exactly 100. The loader rejects the file
+# with a precise message if it does not.
+# ---------------------------------------------------------------------------
+
+# Seeds every random choice. The same seed produces byte-identical data.
+seed: 42
+
+volume:
+  customers: 50
+  invoices: 2000
+  payments: 800
+
+period:
+  # Invoices are issued across this window; due dates follow payment terms.
+  invoice_start: 2026-01-01
+  invoice_end: 2026-05-31
+  # Payment value date, in days relative to the invoice due date.
+  # Negative is an early payer; large positive is a chronic late payer.
+  payment_offset_days: [-6, 45]
+
+# ---------------------------------------------------------------------------
+# The scenario mix. Each payment is assigned exactly one label, which is what
+# Phase 6 reports accuracy against. Must sum to 100.
+# ---------------------------------------------------------------------------
+scenarios:
+  # Clean reference, clean payer name, amount ties exactly to one invoice.
+  exact_single: 34
+  # One credit settling several invoices. Needs subset-sum.
+  bundled_multi: 18
+  # Pays less than billed and tells you why (damage, promo, pricing...).
+  short_pay_deduction: 14
+  # Pays part of one invoice; the rest stays open.
+  partial_payment: 10
+  # Narration carries no usable invoice reference at all.
+  missing_reference: 10
+  # Reference is present but mangled: "inv 42" for "INV-00042".
+  typo_reference: 8
+  # Payer name is a spelling not on file; needs fuzzy matching.
+  payer_name_variant: 4
+  # Money from a payer with no open invoices. Should end as unapplied cash.
+  no_matching_invoice: 2
+
+bundle:
+  min_invoices: 2
+  max_invoices: 5
+
+partial:
+  min_share_pct: 25
+  max_share_pct: 85
+
+deduction:
+  # Deduction as a share of the invoice total being short-paid.
+  min_share_pct: 2
+  max_share_pct: 12
+  # Real claims are round-ish numbers, not arbitrary fractions.
+  round_to_rupees: 50
+  # Reason mix. Must sum to 100.
+  reasons:
+    damage: 30
+    promo: 25
+    pricing: 18
+    short_ship: 12
+    freight: 10
+    tds: 5
+
+invoice:
+  min_amount_inr: 8000
+  max_amount_inr: 950000
+  # Share of invoices on a negotiated flat rate, so the total is round.
+  # Round amounts collide more easily in subset-sum, which is realistic.
+  round_amount_share_pct: 15
+  payment_terms_days: [15, 30, 45, 60]
+  po_number_share_pct: 30
+
+customer:
+  # Share of customers that already have alternate spellings on file in the
+  # ERP. The rest force the matcher to fall back to fuzzy matching.
+  registered_alias_share_pct: 60
+  max_registered_aliases: 3
+
+remittance:
+  # Share of payments accompanied by an advice document.
+  coverage_pct: 55
+  # Of those, the share arriving as a PDF attachment rather than email body.
+  pdf_share_pct: 15
+  # Share of advice documents quoting the bank reference, so the link to the
+  # payment is explicit. The rest must be inferred from payer and amount.
+  explicit_link_share_pct: 35

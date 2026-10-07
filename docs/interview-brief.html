@@ -1,0 +1,3268 @@
+<title>CashMatch — Engineering Brief</title>
+
+<style>
+  /* ---------- tokens: light is the base, both themes redefine only these ---------- */
+  :root {
+    --ground: #f1f4f4;
+    --surface: #ffffff;
+    --sunk: #e7eded;
+    --ink: #0e1a1c;
+    --ink-soft: #44585b;
+    --ink-faint: #74888b;
+    --rule: #d2dbdb;
+    --rule-strong: #b4c3c3;
+    --accent: #0c5a60;
+    --accent-ink: #0c5a60;
+    --accent-wash: #dcebec;
+    --good: #1c6b45;
+    --good-wash: #dceade;
+    --warn: #8c5e0b;
+    --warn-wash: #f3e7cd;
+    --crit: #9b3225;
+    --crit-wash: #f5dfdb;
+    --shadow: 0 1px 2px rgba(14, 26, 28, .06), 0 8px 24px -16px rgba(14, 26, 28, .3);
+
+    --font-display: ui-monospace, "SF Mono", "Cascadia Mono", "Segoe UI Mono",
+      "Roboto Mono", Menlo, Consolas, monospace;
+    --font-body: Charter, "Bitstream Charter", "Iowan Old Style", "Palatino Linotype",
+      Georgia, "Times New Roman", serif;
+    --font-ui: "Segoe UI", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #0a1214;
+      --surface: #101b1d;
+      --sunk: #162427;
+      --ink: #dfe9e8;
+      --ink-soft: #9bb0b1;
+      --ink-faint: #6f8588;
+      --rule: #223336;
+      --rule-strong: #32484c;
+      --accent: #58c2c7;
+      --accent-ink: #7fd4d8;
+      --accent-wash: #0f3236;
+      --good: #58b887;
+      --good-wash: #10301f;
+      --warn: #d4a44f;
+      --warn-wash: #332710;
+      --crit: #e58876;
+      --crit-wash: #3a1a15;
+      --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 24px -16px rgba(0, 0, 0, .8);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground: #0a1214;
+    --surface: #101b1d;
+    --sunk: #162427;
+    --ink: #dfe9e8;
+    --ink-soft: #9bb0b1;
+    --ink-faint: #6f8588;
+    --rule: #223336;
+    --rule-strong: #32484c;
+    --accent: #58c2c7;
+    --accent-ink: #7fd4d8;
+    --accent-wash: #0f3236;
+    --good: #58b887;
+    --good-wash: #10301f;
+    --warn: #d4a44f;
+    --warn-wash: #332710;
+    --crit: #e58876;
+    --crit-wash: #3a1a15;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 24px -16px rgba(0, 0, 0, .8);
+  }
+
+  /* ---------- base ---------- */
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 17px;
+    line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page {
+    max-width: 1240px;
+    margin: 0 auto;
+    padding: 0 24px 120px;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0 56px;
+  }
+
+  @media (min-width: 1080px) {
+    .page { grid-template-columns: 196px minmax(0, 1fr); }
+  }
+
+  /* ---------- index rail ---------- */
+  .rail { display: none; }
+
+  @media (min-width: 1080px) {
+    .rail {
+      display: block;
+      grid-column: 1;
+      position: sticky;
+      top: 0;
+      align-self: start;
+      max-height: 100vh;
+      overflow-y: auto;
+      padding: 40px 0;
+      font-family: var(--font-display);
+      font-size: 11.5px;
+      line-height: 1.5;
+    }
+  }
+
+  .rail-label {
+    text-transform: uppercase;
+    letter-spacing: .16em;
+    color: var(--ink-faint);
+    margin-bottom: 14px;
+  }
+
+  .rail ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+
+  .rail a {
+    display: grid;
+    grid-template-columns: 22px 1fr;
+    gap: 6px;
+    padding: 5px 8px 5px 0;
+    color: var(--ink-soft);
+    text-decoration: none;
+    border-left: 2px solid transparent;
+    padding-left: 10px;
+    transition: color .15s, border-color .15s;
+  }
+
+  .rail a:hover { color: var(--accent-ink); }
+  .rail a .n { color: var(--ink-faint); }
+  .rail a.is-active { color: var(--accent-ink); border-left-color: var(--accent); }
+  .rail a.is-active .n { color: var(--accent-ink); }
+
+  /* ---------- main column ---------- */
+  main { grid-column: 1; min-width: 0; }
+  @media (min-width: 1080px) { main { grid-column: 2; } }
+
+  .measure { max-width: 68ch; }
+
+  /* ---------- masthead ---------- */
+  .masthead { padding: 56px 0 40px; border-bottom: 2px solid var(--ink); }
+
+  .eyebrow {
+    font-family: var(--font-display);
+    font-size: 11.5px;
+    text-transform: uppercase;
+    letter-spacing: .2em;
+    color: var(--ink-faint);
+    margin: 0 0 18px;
+  }
+
+  h1 {
+    font-family: var(--font-display);
+    font-size: clamp(2.1rem, 5.5vw, 3.1rem);
+    font-weight: 600;
+    letter-spacing: -.02em;
+    line-height: 1.05;
+    margin: 0 0 6px;
+    text-wrap: balance;
+  }
+
+  .subtitle {
+    font-size: clamp(1.05rem, 2.4vw, 1.3rem);
+    color: var(--ink-soft);
+    margin: 0 0 28px;
+    max-width: 56ch;
+    text-wrap: balance;
+  }
+
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 10px;
+    font-family: var(--font-display);
+    font-size: 11.5px;
+    letter-spacing: .04em;
+  }
+
+  .chip {
+    border: 1px solid var(--rule-strong);
+    border-radius: 2px;
+    padding: 4px 9px;
+    color: var(--ink-soft);
+    background: var(--surface);
+  }
+
+  .chip.live { border-color: var(--good); color: var(--good); background: var(--good-wash); }
+
+  /* ---------- sections ---------- */
+  section { padding-top: 64px; scroll-margin-top: 24px; }
+
+  h2 {
+    font-family: var(--font-display);
+    font-size: 1.02rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .13em;
+    margin: 0 0 4px;
+    color: var(--ink);
+    display: grid;
+    grid-template-columns: 2.6em 1fr;
+    gap: 4px;
+    align-items: baseline;
+  }
+
+  h2 .n { color: var(--accent-ink); font-weight: 400; }
+
+  .rule {
+    height: 1px;
+    background: var(--rule);
+    margin: 14px 0 26px;
+  }
+
+  h3 {
+    font-family: var(--font-ui);
+    font-size: 1.04rem;
+    font-weight: 650;
+    letter-spacing: -.005em;
+    margin: 34px 0 8px;
+    color: var(--ink);
+  }
+
+  h4 {
+    font-family: var(--font-display);
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .11em;
+    color: var(--ink-faint);
+    margin: 26px 0 8px;
+  }
+
+  p { margin: 0 0 16px; }
+  .measure > p:last-child { margin-bottom: 0; }
+
+  a { color: var(--accent-ink); }
+
+  strong { font-weight: 650; }
+
+  code {
+    font-family: var(--font-display);
+    font-size: .86em;
+    background: var(--sunk);
+    border-radius: 2px;
+    padding: 1px 5px;
+    color: var(--ink);
+  }
+
+  .lede {
+    font-size: 1.12rem;
+    color: var(--ink-soft);
+    max-width: 62ch;
+  }
+
+  ul.plain { margin: 0 0 16px; padding-left: 1.15em; }
+  ul.plain li { margin-bottom: 7px; }
+
+  /* ---------- the ledger hero ---------- */
+  .ledger {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    box-shadow: var(--shadow);
+    margin: 30px 0 8px;
+    overflow: hidden;
+  }
+
+  .ledger-head {
+    font-family: var(--font-display);
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: .16em;
+    color: var(--ink-faint);
+    padding: 11px 18px;
+    border-bottom: 1px solid var(--rule);
+    background: var(--sunk);
+  }
+
+  .ledger-body { padding: 16px 18px; overflow-x: auto; }
+
+  .ledger table {
+    width: 100%;
+    min-width: 560px;
+    border-collapse: collapse;
+    font-family: var(--font-display);
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .ledger td { padding: 5px 0; vertical-align: baseline; }
+  .ledger td.num { text-align: right; padding-left: 20px; white-space: nowrap; }
+  .ledger .dim { color: var(--ink-faint); }
+  .ledger .ded { color: var(--crit); }
+  .ledger tr.total td { border-top: 1px solid var(--ink); padding-top: 9px; font-weight: 600; }
+  .ledger .balanced { color: var(--good); }
+
+  .caption {
+    font-family: var(--font-ui);
+    font-size: 13.5px;
+    line-height: 1.5;
+    color: var(--ink-faint);
+    margin: 10px 0 0;
+    max-width: 62ch;
+  }
+
+  /* ---------- callout ---------- */
+  .callout {
+    border-left: 3px solid var(--accent);
+    background: var(--accent-wash);
+    padding: 16px 20px;
+    margin: 26px 0;
+    border-radius: 0 3px 3px 0;
+  }
+
+  .callout p { margin: 0; }
+  .callout p + p { margin-top: 10px; }
+
+  .callout.caution { border-left-color: var(--crit); background: var(--crit-wash); }
+
+  /* ---------- tables ---------- */
+  .table-wrap {
+    overflow-x: auto;
+    margin: 20px 0 8px;
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    background: var(--surface);
+  }
+
+  table.data {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: var(--font-ui);
+    font-size: 14px;
+    line-height: 1.45;
+  }
+
+  table.data th {
+    text-align: left;
+    font-family: var(--font-display);
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    font-weight: 600;
+    color: var(--ink-faint);
+    background: var(--sunk);
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--rule);
+    white-space: nowrap;
+  }
+
+  table.data td {
+    padding: 11px 14px;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: top;
+  }
+
+  table.data tr:last-child td { border-bottom: none; }
+  table.data td.key { font-family: var(--font-display); font-size: 12.5px; white-space: nowrap; }
+  table.data td.num { font-variant-numeric: tabular-nums; text-align: right; }
+
+  /* ---------- status pills ---------- */
+  .pill {
+    display: inline-block;
+    font-family: var(--font-display);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    padding: 3px 8px;
+    border-radius: 2px;
+    white-space: nowrap;
+    border: 1px solid transparent;
+  }
+
+  .pill.done { background: var(--good-wash); color: var(--good); border-color: var(--good); }
+  .pill.next { background: var(--warn-wash); color: var(--warn); border-color: var(--warn); }
+  .pill.todo { background: transparent; color: var(--ink-faint); border-color: var(--rule-strong); }
+
+  /* ---------- figures ---------- */
+  figure {
+    margin: 28px 0 8px;
+    padding: 22px 20px 16px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    overflow-x: auto;
+  }
+
+  figure svg {
+    display: block;
+    width: 100%;
+    min-width: 640px;
+    max-width: 100%;
+    height: auto;
+    color: var(--ink);
+  }
+
+  figcaption {
+    font-family: var(--font-ui);
+    font-size: 13.5px;
+    line-height: 1.5;
+    color: var(--ink-faint);
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px solid var(--rule);
+    max-width: 70ch;
+  }
+
+  .svg-box { fill: var(--surface); stroke: var(--rule-strong); }
+  .svg-box-key { fill: var(--accent-wash); stroke: var(--accent); }
+  .svg-title { font-family: var(--font-display); font-size: 12px; font-weight: 600; fill: var(--ink); }
+  .svg-sub { font-family: var(--font-display); font-size: 10px; fill: var(--ink-faint); }
+  .svg-edge { stroke: var(--ink-soft); fill: none; stroke-width: 1.3; }
+  .svg-edge-soft { stroke: var(--ink-faint); fill: none; stroke-width: 1.1; stroke-dasharray: 4 3; }
+  .svg-edge-key { stroke: var(--accent); fill: none; stroke-width: 1.8; }
+  .svg-lab { font-family: var(--font-display); font-size: 9.5px; fill: var(--ink-faint); }
+  .svg-lab-key { font-family: var(--font-display); font-size: 9.5px; fill: var(--accent-ink); }
+
+  /* ---------- q&a ---------- */
+  .qa { display: grid; gap: 0; margin-top: 8px; }
+
+  .qa details {
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .qa details[open] { background: var(--surface); }
+
+  .qa summary {
+    cursor: pointer;
+    list-style: none;
+    padding: 15px 14px 15px 36px;
+    position: relative;
+    font-family: var(--font-ui);
+    font-size: 15.5px;
+    font-weight: 600;
+    line-height: 1.4;
+    color: var(--ink);
+  }
+
+  .qa summary::-webkit-details-marker { display: none; }
+
+  .qa summary::before {
+    content: "+";
+    position: absolute;
+    left: 14px;
+    top: 15px;
+    font-family: var(--font-display);
+    font-size: 15px;
+    color: var(--accent-ink);
+  }
+
+  .qa details[open] summary::before { content: "\2212"; }
+  .qa summary:hover { color: var(--accent-ink); }
+  .qa summary:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+  .qa .answer { padding: 0 20px 20px 36px; max-width: 72ch; }
+  .qa .answer p { margin: 0 0 13px; }
+  .qa .answer p:last-child { margin-bottom: 0; }
+
+  /* ---------- stat row ---------- */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1px;
+    background: var(--rule);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    margin: 24px 0 8px;
+    overflow: hidden;
+  }
+
+  .stat { background: var(--surface); padding: 16px 18px; }
+
+  .stat .v {
+    font-family: var(--font-display);
+    font-size: 1.6rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.1;
+    color: var(--ink);
+    display: block;
+  }
+
+  .stat .k {
+    font-family: var(--font-display);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    color: var(--ink-faint);
+    margin-top: 7px;
+    display: block;
+  }
+
+  .stat.pending .v { color: var(--ink-faint); }
+
+  /* ---------- code block ---------- */
+  pre {
+    font-family: var(--font-display);
+    font-size: 12.5px;
+    line-height: 1.6;
+    background: var(--sunk);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    padding: 15px 17px;
+    overflow-x: auto;
+    margin: 20px 0;
+    color: var(--ink);
+  }
+
+  pre code { background: none; padding: 0; font-size: inherit; }
+
+  /* ---------- footer ---------- */
+  footer {
+    margin-top: 72px;
+    padding-top: 22px;
+    border-top: 2px solid var(--ink);
+    font-family: var(--font-display);
+    font-size: 11.5px;
+    color: var(--ink-faint);
+    letter-spacing: .04em;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; }
+  }
+</style>
+
+<div class="page">
+
+  <nav class="rail" aria-label="Section index">
+    <div class="rail-label">Contents</div>
+    <ol>
+      <li><a href="#pitch"><span class="n">01</span><span>The pitch</span></a></li>
+      <li><a href="#domain"><span class="n">02</span><span>Domain primer</span></a></li>
+      <li><a href="#cost"><span class="n">03</span><span>Cost asymmetry</span></a></li>
+      <li><a href="#architecture"><span class="n">04</span><span>Architecture</span></a></li>
+      <li><a href="#model"><span class="n">05</span><span>Data model</span></a></li>
+      <li><a href="#dataset"><span class="n">06</span><span>The dataset</span></a></li>
+      <li><a href="#cascade"><span class="n">07</span><span>The cascade</span></a></li>
+      <li><a href="#extraction"><span class="n">08</span><span>Extraction</span></a></li>
+      <li><a href="#confidence"><span class="n">09</span><span>Confidence</span></a></li>
+      <li><a href="#product"><span class="n">10</span><span>The product</span></a></li>
+      <li><a href="#stack"><span class="n">11</span><span>Tech stack</span></a></li>
+      <li><a href="#decisions"><span class="n">12</span><span>Design calls</span></a></li>
+      <li><a href="#roadmap"><span class="n">13</span><span>Roadmap</span></a></li>
+      <li><a href="#results"><span class="n">14</span><span>Results</span></a></li>
+      <li><a href="#roi"><span class="n">15</span><span>What it is worth</span></a></li>
+      <li><a href="#qa"><span class="n">16</span><span>Interview Q&amp;A</span></a></li>
+    </ol>
+  </nav>
+
+  <main>
+
+    <header class="masthead">
+      <p class="eyebrow">Engineering brief &middot; Order-to-Cash</p>
+      <h1>CashMatch</h1>
+      <p class="subtitle">An AI cash application agent: match incoming B2B bank payments to the
+        open invoices they settle, apply cash when confident, review when not.</p>
+      <div class="meta">
+        <span class="chip live">All 8 phases complete</span>
+        <span class="chip">Python 3.13 &middot; FastAPI &middot; SQLAlchemy 2</span>
+        <span class="chip">PostgreSQL 16</span>
+        <span class="chip">Gemini (optional)</span>
+        <span class="chip">2,000 invoices &middot; 800 payments</span>
+        <span class="chip">489 tests passing</span>
+      </div>
+    </header>
+
+    <!-- ===================================================== 01 -->
+    <section id="pitch">
+      <h2><span class="n">01</span><span>The pitch</span></h2>
+      <div class="rule"></div>
+
+      <div class="measure">
+        <p class="lede">A distributor's customer wires &#8377;4,18,500. Nothing in the bank
+          statement line says which invoices it settles, and the note that explains it arrived
+          two days earlier, by email, with no reference tying the two together.</p>
+      </div>
+
+      <div class="ledger">
+        <div class="ledger-head">What the bank gives you</div>
+        <div class="ledger-body">
+          <table>
+            <tbody>
+              <tr>
+                <td class="dim">06-Feb-2026</td>
+                <td>NEFT&nbsp;&nbsp;A.B.C. TRDRS PVT</td>
+                <td class="dim">PMT REF 42/43 DED DMG</td>
+                <td class="num">&#8377;4,18,500.00</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="ledger-head">What it actually means</div>
+        <div class="ledger-body">
+          <table>
+            <tbody>
+              <tr>
+                <td>INV-00042</td>
+                <td class="dim">due 09-Feb</td>
+                <td class="num">&#8377;3,00,000.00</td>
+                <td class="num dim">applied in full</td>
+              </tr>
+              <tr>
+                <td>INV-00043</td>
+                <td class="dim">due 14-Feb</td>
+                <td class="num">&#8377;1,30,500.00</td>
+                <td class="num ded">&minus;&#8377;12,000.00 damage</td>
+              </tr>
+              <tr class="total">
+                <td colspan="2">Cash applied</td>
+                <td class="num">&#8377;4,18,500.00</td>
+                <td class="num balanced">balances &#10003;</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <p class="caption">One payment, two invoices, one deduction. An AR analyst resolves this by
+        hand several hundred times a day. CashMatch does it automatically and explains every
+        decision it makes.</p>
+
+      <div class="measure">
+        <h3>What the system has to get right</h3>
+        <p>A single bank credit might settle one invoice, bundle a dozen, arrive short because the
+          customer is claiming damaged stock, quote a mangled reference, or belong to no invoice at
+          all. The remittance advice that disambiguates it is a free-text email or a PDF, on a
+          separate channel, often late.</p>
+        <p>Two numbers decide whether the system is worth deploying.</p>
+      </div>
+
+      <div class="stats">
+        <div class="stat">
+          <span class="v">81.9<span style="font-size:.62em">%</span></span>
+          <span class="k">Auto-match rate</span>
+        </div>
+        <div class="stat">
+          <span class="v">100<span style="font-size:.62em">%</span></span>
+          <span class="k">Match precision</span>
+        </div>
+        <div class="stat">
+          <span class="v">13.0<span style="font-size:.62em">%</span></span>
+          <span class="k">Review rate</span>
+        </div>
+        <div class="stat">
+          <span class="v">5.1<span style="font-size:.62em">%</span></span>
+          <span class="k">Unapplied rate</span>
+        </div>
+      </div>
+      <p class="caption">Measured over 800 payments worth &#8377;61.1 crore, against a
+        ground-truth file the matcher cannot read. Zero payments were auto-applied to the wrong
+        invoice. Full breakdown in <a href="#results">Results</a>.</p>
+    </section>
+
+    <!-- ===================================================== 02 -->
+    <section id="domain">
+      <h2><span class="n">02</span><span>Domain primer</span></h2>
+      <div class="rule"></div>
+
+      <div class="measure">
+        <p>Order-to-Cash is everything between a customer placing an order and the money landing,
+          reconciled, in your ledger. <strong>Cash application</strong> is the last step: deciding
+          which invoices a received payment settles, and posting it. These are the terms the code
+          uses.</p>
+      </div>
+
+      <div class="table-wrap">
+        <table class="data">
+          <thead>
+            <tr><th>Term</th><th>What it means</th><th>Worked example</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="key">Open item</td>
+              <td>An invoice with money still outstanding. The search space the matcher works
+                against.</td>
+              <td>INV-00042, &#8377;3,00,000 billed, &#8377;3,00,000 still open.</td>
+            </tr>
+            <tr>
+              <td class="key">Remittance advice</td>
+              <td>The customer's note saying what a payment covers. Travels on a different channel
+                from the money &mdash; email, PDF, portal &mdash; and frequently carries no bank
+                reference.</td>
+              <td>&ldquo;Pls find payment for 42 &amp; 43, dmg claim adjusted.&rdquo;</td>
+            </tr>
+            <tr>
+              <td class="key">Short-pay</td>
+              <td>The customer deliberately pays less than billed. Not late payment and not bad
+                debt &mdash; they are asserting a claim and expect you to accept it.</td>
+              <td>&#8377;1,30,500 invoice settled with &#8377;1,18,500.</td>
+            </tr>
+            <tr>
+              <td class="key">Deduction</td>
+              <td>The withheld amount, plus a reason code. Routing the claim to the right team
+                (logistics, trade marketing, pricing) is a whole downstream workflow.</td>
+              <td>&#8377;12,000, reason <code>damage</code>.</td>
+            </tr>
+            <tr>
+              <td class="key">Unapplied cash</td>
+              <td>Money received that could not be matched. It is not lost &mdash; it sits on the
+                customer's account, making them look like they owe less than they do.</td>
+              <td>&#8377;7,500 from a payer with no open invoices.</td>
+            </tr>
+            <tr>
+              <td class="key">Partial payment</td>
+              <td>The customer pays part of an invoice with the rest still to come. The invoice
+                becomes <code>partially_paid</code> and stays in the open-item pool.</td>
+              <td>&#8377;1,00,000 against a &#8377;3,00,000 invoice.</td>
+            </tr>
+            <tr>
+              <td class="key">DSO</td>
+              <td>Days Sales Outstanding &mdash; average days to collect. Unapplied cash inflates
+                it artificially, which is why finance leadership cares about this system.</td>
+              <td>A 2-day cut in DSO on &#8377;50 crore of receivables frees real working
+                capital.</td>
+            </tr>
+            <tr>
+              <td class="key">Dunning</td>
+              <td>Automated chasing of overdue invoices. If cash was mis-applied, dunning chases a
+                customer for an invoice they already paid.</td>
+              <td>The most visible failure mode of a wrong auto-match.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="measure">
+        <h3>Why it is genuinely hard</h3>
+        <ul class="plain">
+          <li><strong>The payer name is not the customer name.</strong> Banks relay whatever the
+            remitting bank sent: <code>A.B.C. TRDRS PVT</code>, <code>M/s ABC Traders</code>,
+            <code>ABC TRADERS-MUMBAI</code>. All one customer.</li>
+          <li><strong>The reference field is a free-text dumping ground.</strong> Sometimes invoice
+            numbers, sometimes the customer's internal payment ID, sometimes nothing.</li>
+          <li><strong>Amounts rarely tie out exactly.</strong> Deductions, TDS withholding, bank
+            charges and rounding all move the number.</li>
+          <li><strong>Bundled payments are combinatorial.</strong> One credit against 40 open
+            invoices has a very large number of candidate subsets, and several may sum to the
+            same total.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ===================================================== 03 -->
+    <section id="cost">
+      <h2><span class="n">03</span><span>Cost asymmetry</span></h2>
+      <div class="rule"></div>
+
+      <div class="measure">
+        <p>The single most important idea in the project, and the one worth leading with in an
+          interview: <strong>the two ways this system can fail do not cost the same.</strong></p>
+      </div>
+
+      <div class="table-wrap">
+        <table class="data">
+          <thead>
+            <tr><th>Failure</th><th>What happens</th><th>Cost to unwind</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="key">Sent to review<br>when it could have been auto</td>
+              <td>An analyst opens the item, agrees with the suggestion, clicks approve.</td>
+              <td>Roughly two minutes of analyst time. Bounded, visible, and it still produces the
+                correct ledger entry.</td>
+            </tr>
+            <tr>
+              <td class="key">Auto-applied<br>to the wrong invoice</td>
+              <td>An invoice is marked paid that is not. A different invoice stays open. The
+                customer's balance is wrong in two places at once.</td>
+              <td>A dunning letter goes to a customer who paid. Someone disputes it. A reversal
+                entry is raised, approved, posted, and reconciled. Hours of work across two
+                teams, plus the relationship damage.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout caution">
+        <p><strong>Consequence for the design:</strong> precision is a hard constraint and
+          automation rate is the thing being optimised underneath it. The right question is never
+          &ldquo;how high can we push the auto-match rate?&rdquo; but &ldquo;what is the highest
+          auto-match rate we can reach while holding precision above the bar finance will
+          accept?&rdquo;</p>
+        <p>That is why Phase 6 reports a <strong>threshold sweep</strong> rather than a single
+          accuracy number. Moving the auto-apply threshold trades one failure mode for the other,
+          and the business &mdash; not the engineer &mdash; should choose where on that curve to
+          sit.</p>
+      </div>
+
+      <div class="measure">
+        <p>It is also why every decision carries a stored explanation. A reviewer who cannot see
+          <em>why</em> the system suggested something has to redo the work from scratch, which
+          erases the saving the review queue was supposed to deliver.</p>
+      </div>
+    </section>
+
+    <!-- ===================================================== 04 -->
+    <section id="architecture">
+      <h2><span class="n">04</span><span>Architecture</span></h2>
+      <div class="rule"></div>
+
+      <div class="measure">
+        <p>Two inputs arrive independently and have to be fused: the bank statement carries the
+          money, the remittance advice carries the intent. Everything downstream is a cascade of
+          progressively weaker signals, each one explaining itself as it fires.</p>
+      </div>
+
+      <figure>
+        <svg viewBox="0 0 960 310" role="img"
+             aria-label="Pipeline diagram: bank statement lines are normalised, matched to a customer, then run through a matching cascade; remittance advice is extracted in parallel and feeds the same cascade; a scorer then routes each payment to auto-applied, review, or unapplied.">
+          <defs>
+            <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7"
+                    orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"></path>
+            </marker>
+          </defs>
+
+          <!-- remittance lane -->
+          <rect class="svg-box" x="14" y="18" width="130" height="50" rx="2"></rect>
+          <text class="svg-title" x="79" y="40" text-anchor="middle">Remittance</text>
+          <text class="svg-sub" x="79" y="55" text-anchor="middle">email / PDF</text>
+
+          <rect class="svg-box" x="300" y="18" width="150" height="50" rx="2"></rect>
+          <text class="svg-title" x="375" y="40" text-anchor="middle">Extract</text>
+          <text class="svg-sub" x="375" y="55" text-anchor="middle">LLM + regex fallback</text>
+
+          <line class="svg-edge" x1="144" y1="43" x2="294" y2="43" marker-end="url(#ah)"></line>
+          <text class="svg-lab" x="219" y="36" text-anchor="middle">raw text</text>
+
+          <!-- bank lane -->
+          <rect class="svg-box" x="14" y="152" width="130" height="50" rx="2"></rect>
+          <text class="svg-title" x="79" y="174" text-anchor="middle">Bank file</text>
+          <text class="svg-sub" x="79" y="189" text-anchor="middle">statement CSV</text>
+
+          <rect class="svg-box" x="172" y="152" width="110" height="50" rx="2"></rect>
+          <text class="svg-title" x="227" y="174" text-anchor="middle">Normalise</text>
+          <text class="svg-sub" x="227" y="189" text-anchor="middle">name + ref</text>
+
+          <rect class="svg-box" x="310" y="152" width="130" height="50" rx="2"></rect>
+          <text class="svg-title" x="375" y="174" text-anchor="middle">Identify</text>
+          <text class="svg-sub" x="375" y="189" text-anchor="middle">customer</text>
+
+          <rect class="svg-box-key" x="468" y="152" width="140" height="50" rx="2"></rect>
+          <text class="svg-title" x="538" y="174" text-anchor="middle">Match cascade</text>
+          <text class="svg-sub" x="538" y="189" text-anchor="middle">4 strategies</text>
+
+          <rect class="svg-box" x="636" y="152" width="120" height="50" rx="2"></rect>
+          <text class="svg-title" x="696" y="174" text-anchor="middle">Score</text>
+          <text class="svg-sub" x="696" y="189" text-anchor="middle">weighted signals</text>
+
+          <line class="svg-edge" x1="144" y1="177" x2="166" y2="177" marker-end="url(#ah)"></line>
+          <line class="svg-edge" x1="282" y1="177" x2="304" y2="177" marker-end="url(#ah)"></line>
+          <text class="svg-lab" x="293" y="146" text-anchor="middle">payer, narration</text>
+          <line class="svg-edge" x1="440" y1="177" x2="462" y2="177" marker-end="url(#ah)"></line>
+          <text class="svg-lab" x="451" y="146" text-anchor="middle">exact &#8594; alias &#8594; fuzzy</text>
+          <line class="svg-edge" x1="608" y1="177" x2="630" y2="177" marker-end="url(#ah)"></line>
+          <text class="svg-lab" x="619" y="146" text-anchor="middle">candidates</text>
+
+          <!-- remittance feeds the cascade -->
+          <polyline class="svg-edge-key" points="450,43 538,43 538,146" marker-end="url(#ah)"></polyline>
+          <text class="svg-lab-key" x="548" y="100">invoice refs + deductions</text>
+
+          <!-- outputs -->
+          <rect class="svg-box" x="800" y="96" width="146" height="44" rx="2"></rect>
+          <text class="svg-title" x="873" y="116" text-anchor="middle">Auto-applied</text>
+          <text class="svg-sub" x="873" y="130" text-anchor="middle">no human</text>
+
+          <rect class="svg-box" x="800" y="155" width="146" height="44" rx="2"></rect>
+          <text class="svg-title" x="873" y="175" text-anchor="middle">Review queue</text>
+          <text class="svg-sub" x="873" y="189" text-anchor="middle">analyst decides</text>
+
+          <rect class="svg-box" x="800" y="214" width="146" height="44" rx="2"></rect>
+          <text class="svg-title" x="873" y="234" text-anchor="middle">Unapplied</text>
+          <text class="svg-sub" x="873" y="248" text-anchor="middle">cash on account</text>
+
+          <polyline class="svg-edge" points="756,177 778,177 778,118 794,118" marker-end="url(#ah)"></polyline>
+          <line class="svg-edge" x1="756" y1="177" x2="794" y2="177" marker-end="url(#ah)"></line>
+          <polyline class="svg-edge" points="756,177 778,177 778,236 794,236" marker-end="url(#ah)"></polyline>
+
+          <text class="svg-lab" x="766" y="86">&#8805; auto threshold</text>
+          <text class="svg-lab" x="766" y="276">no candidate</text>
+
+          <!-- feedback loop -->
+          <polyline class="svg-edge-soft" points="873,199 873,290 375,290 375,208"
+                    marker-end="url(#ah)"></polyline>
+          <text class="svg-lab" x="624" y="285" text-anchor="middle">approved payer spelling becomes a learned alias</text>
+        </svg>
+        <figcaption>Remittance extraction runs in parallel and joins the cascade as its strongest
+          single signal (teal). The dashed path is the feedback loop: an analyst approving a review
+          item teaches the system a payer alias it did not previously know, so the same spelling
+          matches without help next time.</figcaption>
+      </figure>
+
+      <div class="measure">
+        <h3>The matching cascade, in order</h3>
+        <p>Each step is tried in turn and stops when it produces a confident candidate set. The
+          order is deliberate: cheapest and most certain first.</p>
+      </div>
+
+      <div class="table-wrap">
+        <table class="data">
+          <thead>
+            <tr><th>#</th><th>Strategy</th><th>What it does</th><th>Cost</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="key">1</td>
+              <td class="key">reference_exact</td>
+              <td>A normalised invoice reference found in the narration or the extracted
+                remittance hits an open item directly.</td>
+              <td>Index lookup</td>
+            </tr>
+            <tr>
+              <td class="key">2</td>
+              <td class="key">amount_exact</td>
+              <td>Exactly one of the customer's open invoices equals the payment to the paise.</td>
+              <td>Indexed scan</td>
+            </tr>
+            <tr>
+              <td class="key">3</td>
+              <td class="key">subset_sum</td>
+              <td>Find a set of open invoices summing to the payment within tolerance &mdash; the
+                bundled-payment case.</td>
+              <td>Pruned search</td>
+            </tr>
+            <tr>
+              <td class="key">4</td>
+              <td class="key">short_pay</td>
+              <td>Find a set whose total <em>exceeds</em> the payment by a plausible deduction, and
+                classify the gap.</td>
+              <td>Pruned search</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout">
+        <p><strong>On subset-sum complexity.</strong> Subset-sum is NP-complete in general, so the
+          engineering is all in the pruning. Restricting to one customer's open items cuts the
+          candidate pool from every invoice in the business to typically 10&ndash;60; a date window
+          around the payment trims it further; and capping the combination size at <em>k</em>
+          bounds the work at C(n, k) rather than 2&#8319;. With n&nbsp;=&nbsp;40 and
+          k&nbsp;=&nbsp;4 that is about 102,000 combinations &mdash; a few milliseconds &mdash;
+          against 1.1&nbsp;&times;&nbsp;10&#185;&#178; for the unpruned power set.</p>
+        <p>The honest trade-off: capping at <em>k</em> means a genuine 7-invoice bundle will not be
+          found by this strategy. That is the right failure &mdash; it lands in the review queue
+          rather than producing a wrong auto-match.</p>
+      </div>
+    </section>
+
+    <!-- ===================================================== 05 -->
+    <section id="model">
+      <h2><span class="n">05</span><span>Data model</span></h2>
+      <div class="rule"></div>
+
+      <div class="measure">
+        <p>Eight tables. The shape of the schema encodes the shape of the business problem, and two
+          of the decisions below are the ones worth defending in an interview: the nullable
+          remittance link, and the absence of any ground-truth column.</p>
+      </div>
+
+      <figure>
+        <svg viewBox="0 0 960 620" role="img"
+             aria-label="Entity relationship diagram of eight tables: customers links to customer aliases and invoices; remittances optionally link to bank transactions; bank transactions produce match results, which split into match allocations against invoices; the audit log points at any table by a soft pointer with no foreign key.">
+          <defs>
+            <marker id="ah2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7"
+                    orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"></path>
+            </marker>
+          </defs>
+
+          <!-- column A: AR master data -->
+          <rect class="svg-box" x="20" y="30" width="250" height="88" rx="2"></rect>
+          <text class="svg-title" x="34" y="52">customer_aliases</text>
+          <text class="svg-sub" x="34" y="70">normalized_alias &#183; indexed</text>
+          <text class="svg-sub" x="34" y="85">source: erp | learned | manual</text>
+          <text class="svg-sub" x="34" y="104">every spelling the bank might send</text>
+
+          <rect class="svg-box" x="20" y="170" width="250" height="88" rx="2"></rect>
+          <text class="svg-title" x="34" y="192">customers</text>
+          <text class="svg-sub" x="34" y="210">code &#183; legal_name</text>
+          <text class="svg-sub" x="34" y="225">normalized_name &#183; indexed</text>
+          <text class="svg-sub" x="34" y="244">payment_terms_days</text>
+
+          <rect class="svg-box" x="20" y="330" width="250" height="96" rx="2"></rect>
+          <text class="svg-title" x="34" y="352">invoices</text>
+          <text class="svg-sub" x="34" y="370">invoice_number &#183; normalized_number</text>
+          <text class="svg-sub" x="34" y="385">amount_paise &#183; open_amount_paise</text>
+          <text class="svg-sub" x="34" y="400">status: open | partially_paid | paid</text>
+          <text class="svg-sub" x="34" y="417">open_amount &gt; 0 means &ldquo;open item&rdquo;</text>
+
+          <!-- column B: incoming -->
+          <rect class="svg-box" x="350" y="30" width="250" height="88" rx="2"></rect>
+          <text class="svg-title" x="364" y="52">remittances</text>
+          <text class="svg-sub" x="364" y="70">source_type &#183; raw_text</text>
+          <text class="svg-sub" x="364" y="85">extracted_payload (jsonb)</text>
+          <text class="svg-sub" x="364" y="104">extraction_method: llm | regex | mock</text>
+
+          <rect class="svg-box" x="350" y="170" width="250" height="96" rx="2"></rect>
+          <text class="svg-title" x="364" y="192">bank_transactions</text>
+          <text class="svg-sub" x="364" y="210">statement_ref &#183; unique (UTR)</text>
+          <text class="svg-sub" x="364" y="225">amount_paise &#183; value_date</text>
+          <text class="svg-sub" x="364" y="240">payer_name_raw &#183; narration</text>
+          <text class="svg-sub" x="364" y="257">no scenario or ground-truth column</text>
+
+          <!-- column C: decisions -->
+          <rect class="svg-box-key" x="680" y="170" width="260" height="96" rx="2"></rect>
+          <text class="svg-title" x="694" y="192">match_results</text>
+          <text class="svg-sub" x="694" y="210">decision &#183; confidence &#183; strategy</text>
+          <text class="svg-sub" x="694" y="225">explanation (jsonb) &#183; reason_text</text>
+          <text class="svg-sub" x="694" y="240">engine_version &#183; reviewed_by</text>
+          <text class="svg-sub" x="694" y="257">one decision per payment</text>
+
+          <rect class="svg-box-key" x="680" y="330" width="260" height="96" rx="2"></rect>
+          <text class="svg-title" x="694" y="352">match_allocations</text>
+          <text class="svg-sub" x="694" y="370">allocated_amount_paise</text>
+          <text class="svg-sub" x="694" y="385">deduction_amount_paise</text>
+          <text class="svg-sub" x="694" y="400">deduction_reason: damage | promo | &hellip;</text>
+          <text class="svg-sub" x="694" y="417">one row per invoice touched</text>
+
+          <!-- audit -->
+          <rect class="svg-box" x="350" y="500" width="250" height="78" rx="2"></rect>
+          <text class="svg-title" x="364" y="522">audit_log</text>
+          <text class="svg-sub" x="364" y="540">entity_type + entity_id &#183; action</text>
+          <text class="svg-sub" x="364" y="555">actor: system:matcher | user:name</text>
+          <text class="svg-sub" x="364" y="570">payload_before / payload_after</text>
+
+          <!-- edges -->
+          <line class="svg-edge" x1="145" y1="170" x2="145" y2="124" marker-end="url(#ah2)"></line>
+          <text class="svg-lab" x="155" y="150">1 : N</text>
+
+          <line class="svg-edge" x1="145" y1="258" x2="145" y2="324" marker-end="url(#ah2)"></line>
+          <text class="svg-lab" x="155" y="295">1 : N</text>
+
+          <line class="svg-edge" x1="475" y1="118" x2="475" y2="164" marker-end="url(#ah2)"></line>
+          <text class="svg-lab" x="485" y="145">N : 0..1  (nullable)</text>
+
+          <line class="svg-edge-key" x1="600" y1="218" x2="674" y2="218" marker-end="url(#ah2)"></line>
+          <text class="svg-lab-key" x="637" y="210" text-anchor="middle">1 : N</text>
+
+          <line class="svg-edge-key" x1="810" y1="266" x2="810" y2="324" marker-end="url(#ah2)"></line>
+          <text class="svg-lab-key" x="820" y="298">1 : N</text>
+
+          <line class="svg-edge" x1="270" y1="378" x2="674" y2="378" marker-end="url(#ah2)"></line>
+          <text class="svg-lab" x="472" y="370" text-anchor="middle">1 : N &#183; cash applied per invoice</text>
+
+          <!-- audit bus -->
+          <polyline class="svg-edge-soft" points="145,426 145,464 810,464 810,432"></polyline>
+          <line class="svg-edge-soft" x1="475" y1="464" x2="475" y2="494" marker-end="url(#ah2)"></line>
+          <text class="svg-lab" x="475" y="458" text-anchor="middle">soft pointer &#183; no foreign key &#183; outlives the row it describes</text>
+        </svg>
+        <figcaption>Teal marks the decision path &mdash; the tables written by the matcher rather
+          than by the data load. The audit log deliberately has no foreign keys: it has to cover
+          several tables with one shape and survive deletion of its subject.</figcaption>
+      </figure>
+
+      <h3>Three decisions worth defending</h3>
+
+      <div class="table-wrap">
+        <table class="data">
+          <thead>
+            <tr><th>Decision</th><th>Reasoning</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="key">remittances.bank_transaction_id<br>is nullable</td>
+              <td>Advice and money arrive on separate channels, days apart, often with no shared
+                identifier. Making the link mandatory would assume away the hardest part of the
+                problem. Pairing them is work the system does, not a precondition for storing the
+                data.</td>
+            </tr>
+            <tr>
+              <td class="key">bank_transactions has no<br>scenario or label column</td>
+              <td>The synthetic answer key lives in a file on disk, never in the database the
+                matcher queries. The matcher is structurally incapable of cheating. A test asserts
+                no column containing <code>scenario</code>, <code>truth</code> or
+                <code>expected</code> exists on that table &mdash; so a future contributor cannot
+                quietly reintroduce the leak.</td>
+            </tr>
+            <tr>
+              <td class="key">explanation is a first-class<br>column, not a log line</td>
+              <td>A reviewer who cannot see why a suggestion was made has to redo the analysis,
+                which destroys the value of routing to review at all. Storing the signal breakdown
+                also makes the scorer tunable after the fact: you can replay old decisions against
+                new weights without re-running the pipeline.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h4>Shape of the stored explanation</h4>
+      <pre><code>{
+  "signals": [
+    {"name": "reference_match", "fired": true,  "raw": "INV-00042", "weight": 0.40, "contribution": 0.40},
+    {"name": "amount_match",    "fired": true,  "raw": "exact",     "weight": 0.30, "contribution": 0.30},
+    {"name": "name_similarity", "fired": true,  "raw": 0.91,        "weight": 0.15, "contribution": 0.137},
+    {"name": "date_proximity",  "fired": false, "raw": 47,          "weight": 0.05, "contribution": 0.0}
+  ],
+  "candidates_considered": 12,
+  "rejected": [{"invoice": "INV-00039", "why": "amount gap 2,40,000 paise exceeds tolerance"}]
+}</code></pre>
+      <p class="caption">Written by the scorer in Phase 5, rendered in the review queue in Phase 7.
+        The <code>rejected</code> list matters as much as the accepted one &mdash; a reviewer needs
+        to know what the system ruled out and why.</p>
+    </section>
+
+    <!-- ===================================================== 06 -->
+    <section id="dataset">
+      <h2><span class="n">06</span><span>The dataset</span></h2>
+      <div class="rule"></div>
+
+      <div class="measure">
+        <p>A fictional Indian FMCG distributor's receivables book, generated from a seed and
+          shipped with an answer key. Real AR data cannot go in a portfolio project, and
+          hand-built fixtures would be far too tidy to measure anything &mdash; so the dataset is
+          built to contain, in known proportions, every failure mode the matcher has to
+          survive.</p>
+        <p>Everything about its shape lives in one YAML file. That is the knob: raise
+          <code>missing_reference</code> to 40, re-run the generator, watch the auto-match rate
+          fall. Keeping it out of code makes that a thirty-second experiment instead of a code
+          change.</p>
+      </div>
+
+      <h4>backend/config/scenarios.yml</h4>
+      <pre><code>scenarios:
+  exact_single:        34   # clean reference, exact amount
+  bundled_multi:       18   # one credit, several invoices - needs subset-sum
+  short_pay_deduction: 14   # pays less, says why
+  partial_payment:     10   # part now, rest later
+  missing_reference:   10   # no usable reference at all
+  typo_reference:       8   # "inv 42" for "INV-00042"
+  payer_name_variant:   4   # spelling not on file - needs fuzzy matching
+  no_matching_invoice:  2   # should end as unapplied cash</code></pre>
+      <p class="caption">Strictly validated: the mix must sum to exactly 100, every key must
+        name a known scenario, and a typo in a key is an error rather than a setting that
+        silently does nothing.</p>
+
+      <h3>What the shipped config produces</h3>
+
+      <div class="stats">
+        <div class="stat">
+          <span class="v">&#8377;96.5<span style="font-size:.62em"> cr</span></span>
+          <span class="k">Open receivables</span>
+        </div>
+        <div class="stat">
+          <span class="v">&#8377;61.1<span style="font-size:.62em"> cr</span></span>
+          <span class="k">Cash to apply</span>
+        </div>
+        <div class="stat">
+          <span class="v">1,277</span>
+          <span class="k">Invoices targeted</span>
+        </div>
+        <div class="stat">
+          <span class="v">199</span>
+          <span class="k">Max open items / customer</span>
+        </div>
+      </div>
+      <p class="caption">2,000 invoices exist but only 1,277 are settled by a payment. The other
+        723 are open-item noise the matcher must <em>not</em> touch &mdash; without them every
+        amount lookup would be unrealistically unambiguous. The customer carrying 199 open items
+        is the subset-sum stress case.</p>
+
+      <h3>What the matcher is up against, before it runs</h3>
+
+      <div class="table-wrap">
+        <table class="data">
+          <thead>
+            <tr><th>Property</th><th>Measured on the generated data</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="key">Payer name resolution</td>
+              <td><strong>85.5%</strong> hit the customer index exactly after normalisation.
+                <strong>8.6%</strong> need the alias table. <strong>5.9%</strong> are spellings
+                on nobody's file and can only be reached by fuzzy matching. That split is the
+                whole argument for doing normalisation and aliases <em>before</em> reaching for
+                rapidfuzz.</td>
+            </tr>
+            <tr>
+              <td class="key">Remittance coverage</td>
+              <td><strong>54%</strong> of payments arrive with an advice document. The other 46%
+                must be matched on amount, reference and payer alone.</td>
+            </tr>
+            <tr>
+              <td class="key">Advice linkage</td>
+              <td>Only <strong>198 of 435</strong> advice documents quote the bank reference and
+                so arrive pre-linked. The rest sit unlinked in the database, exactly as they
+                would in production.</td>
+            </tr>
+            <tr>
+              <td class="key">Bundle sizes</td>
+              <td>556 single-invoice payments, then 74 / 81 / 35 / 38 payments covering two,
+                three, four and five invoices. Sixteen settle nothing at all.</td>
+            </tr>
+            <tr>
+              <td class="key">Open items per customer</td>
+              <td>14 minimum, 28 median, 199 maximum. The book is long-tailed on purpose: a
+                handful of key accounts generate most invoices, and those are precisely the
+                accounts where subset-sum gets expensive.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>A generated payment, end to end</h3>
+
+      <div class="ledger">
+        <div class="ledger-head">Bank statement line &mdash; UTR2026012100337</div>
+        <div class="ledger-body">
+          <table>
+            <tbody>
+              <tr>
+                <td class="dim">21-Jan-2026</td>
+                <td>JAI HIMALAYA SALES CORPORATION</td>
+                <td class="num">&#8377;10,94,691.97</td>
+              </tr>
+              <tr>
+                <td class="dim" colspan="3">NEFT JAI HIMALAYA SALES CORPORATION INV-00410
+                  INV-00032 INV-00879 NET OF DMG CLAIM</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="ledger-head">Advice that arrived separately &mdash; RMT-00001.txt</div>
+        <div class="ledger-body">
+          <table>
+            <tbody>
+              <tr><td class="dim" colspan="3">Subject: Fwd: Re: payment status</td></tr>
+              <tr><td class="dim" colspan="3">---------- Forwarded message ----------</td></tr>
+              <tr><td colspan="3">&gt; could you confirm when payment for INV-00410 /
+                INV-00032 / INV-00879 will be released?</td></tr>
+              <tr><td colspan="3">Sir, transfer of 10,94,691.97/- has been done from our
+                side.</td></tr>
+              <tr><td class="ded" colspan="3">4900.00 deducted - breakage claim for detergent
+                consignment.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="ledger-head">Answer key &mdash; data/ground_truth/ground_truth.json</div>
+        <div class="ledger-body">
+          <table>
+            <tbody>
+              <tr>
+                <td>INV-00410</td>
+                <td class="num">&#8377;8,96,179.18</td>
+                <td class="num dim">applied in full</td>
+              </tr>
+              <tr>
+                <td>INV-00032</td>
+                <td class="num">&#8377;1,41,646.95</td>
+                <td class="num dim">applied in full</td>
+              </tr>
+              <tr>
+                <td>INV-00879</td>
+                <td class="num">&#8377;56,865.84</td>
+                <td class="num ded">&minus;&#8377;4,900.00 damage</td>
+              </tr>
+              <tr class="total">
+                <td>Total</td>
+                <td class="num">&#8377;10,94,691.97</td>
+                <td class="num balanced">balances &#10003;</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <p class="caption">A forwarded email thread with quote markers, an amount in Indian digit
+        grouping with a trailing slash, and a claim explained in prose. Four other template
+        families appear across the corpus, plus 74 PDFs &mdash; because an extractor that only
+        handles one house style will visibly underperform, and Phase 6 should be able to see
+        that in the numbers.</p>
+
+      <h3>Why the answer key cannot be cheated</h3>
+
+      <div class="callout">
+        <p>Ground truth is written to <code>data/ground_truth/ground_truth.json</code> and
+          <strong>never loaded into the database the matcher queries</strong>. The separation is
+          physical, not a convention, and three things hold it in place.</p>
+        <p>The schema carries no scenario or label column on <code>bank_transactions</code>, and
+          a test fails the build if one containing <code>scenario</code>, <code>truth</code> or
+          <code>expected</code> ever appears. The database is handed over in its
+          <em>pre-matching</em> state &mdash; every invoice fully open, every payment unmatched.
+          And Phase 6's evaluator is the only component that opens the file, after matching has
+          already finished.</p>
+      </div>
+
+      <div class="measure">
+        <h3>Reproducibility, and why it earns its keep</h3>
+        <p>One seeded <code>Random</code> drives every choice, so the same config always produces
+          byte-identical data &mdash; verified by a test that generates twice and diffs the
+          answer key. The config itself is fingerprinted into the output
+          (<code>sha256:787363436b79d3af</code>), so an accuracy result can always be traced back
+          to the exact scenario mix it was measured against.</p>
+        <p>Without that, "we improved from 71% to 78%" is an unfalsifiable claim. With it, either
+          the comparison is real or the digests disagree and you know not to make it.</p>
+      </div>
+
+      <h4>Honest limitations of this data</h4>
+      <div class="measure">
+        <ul class="plain">
+          <li><strong>One payment per invoice.</strong> Exclusive consumption keeps the answer
+            key unambiguous, at the cost of ruling out the genuine two-instalment case.</li>
+          <li><strong>Unmatchable payments come from strangers.</strong> They carry a payer name
+            belonging to no customer. The subtler real case &mdash; a known customer overpaying,
+            or paying an invoice not yet raised &mdash; is not modelled.</li>
+          <li><strong>The messiness is messiness I thought of.</strong> This is the limitation
+            that actually matters. Real bank files contain failure modes nobody anticipates, and
+            the honest expectation is that measured accuracy drops on first contact with real
+            data.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ===================================================== 07 -->
+    <section id="cascade">
+      <h2><span class="n">07</span><span>The cascade</span></h2>
+      <div class="rule"></div>
+
+      <div class="measure">
+        <p>Six steps per bank credit, ordered by decreasing certainty and increasing cost. The
+          cascade <strong>stops at the first step that produces candidates</strong> &mdash; running
+          a combinatorial search behind an already-certain reference hit is pure waste.</p>
+        <p>Every step that ran is still recorded, firing or not. A reviewer needs to know the
+          matcher looked for a reference and found none, not merely that it produced nothing.</p>
+      </div>
+
+      <figure>
+        <svg viewBox="0 0 960 300" role="img"
+             aria-label="The matching cascade: normalise, identify the customer, then try exact reference, exact amount, subset-sum and short-pay in order, each falling through to the next; anything that reaches the end becomes unapplied cash.">
+          <defs>
+            <marker id="ah3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7"
+                    orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"></path>
+            </marker>
+          </defs>
+
+          <rect class="svg-box" x="14" y="118" width="116" height="52" rx="2"></rect>
+          <text class="svg-title" x="72" y="140" text-anchor="middle">1 Normalise</text>
+          <text class="svg-sub" x="72" y="155" text-anchor="middle">name + narration</text>
+
+          <rect class="svg-box" x="158" y="118" width="128" height="52" rx="2"></rect>
+          <text class="svg-title" x="222" y="140" text-anchor="middle">2 Identify</text>
+          <text class="svg-sub" x="222" y="155" text-anchor="middle">exact / alias / fuzzy</text>
+
+          <rect class="svg-box-key" x="314" y="118" width="136" height="52" rx="2"></rect>
+          <text class="svg-title" x="382" y="140" text-anchor="middle">3 Reference</text>
+          <text class="svg-sub" x="382" y="155" text-anchor="middle">686 payments</text>
+
+          <rect class="svg-box" x="478" y="118" width="118" height="52" rx="2"></rect>
+          <text class="svg-title" x="537" y="140" text-anchor="middle">4 Amount</text>
+          <text class="svg-sub" x="537" y="155" text-anchor="middle">58</text>
+
+          <rect class="svg-box" x="624" y="118" width="124" height="52" rx="2"></rect>
+          <text class="svg-title" x="686" y="140" text-anchor="middle">5 Subset-sum</text>
+          <text class="svg-sub" x="686" y="155" text-anchor="middle">19</text>
+
+          <rect class="svg-box" x="776" y="118" width="118" height="52" rx="2"></rect>
+          <text class="svg-title" x="835" y="140" text-anchor="middle">6 Short-pay</text>
+          <text class="svg-sub" x="835" y="155" text-anchor="middle">15</text>
+
+          <line class="svg-edge" x1="130" y1="144" x2="152" y2="144" marker-end="url(#ah3)"></line>
+          <line class="svg-edge" x1="286" y1="144" x2="308" y2="144" marker-end="url(#ah3)"></line>
+          <line class="svg-edge" x1="450" y1="144" x2="472" y2="144" marker-end="url(#ah3)"></line>
+          <line class="svg-edge" x1="596" y1="144" x2="618" y2="144" marker-end="url(#ah3)"></line>
+          <line class="svg-edge" x1="748" y1="144" x2="770" y2="144" marker-end="url(#ah3)"></line>
+
+          <text class="svg-lab" x="461" y="138" text-anchor="middle">no hit</text>
+          <text class="svg-lab" x="607" y="138" text-anchor="middle">no hit</text>
+          <text class="svg-lab" x="759" y="138" text-anchor="middle">no hit</text>
+
+          <text class="svg-lab-key" x="382" y="108" text-anchor="middle">stops here for 88% of payments</text>
+
+          <polyline class="svg-edge" points="894,144 920,144 920,214 500,214"
+                    marker-end="url(#ah3)"></polyline>
+          <rect class="svg-box" x="314" y="190" width="186" height="46" rx="2"></rect>
+          <text class="svg-title" x="407" y="210" text-anchor="middle">Unapplied cash</text>
+          <text class="svg-sub" x="407" y="225" text-anchor="middle">22 payments</text>
+
+          <polyline class="svg-edge-soft" points="382,170 382,262 222,262 222,176"
+                    marker-end="url(#ah3)"></polyline>
+          <text class="svg-lab-key" x="470" y="258">a resolved reference also identifies the customer (11 payments)</text>
+        </svg>
+        <figcaption>Teal marks where the work actually lands: 686 of 800 payments never get past
+          step 3. The dashed path is the cascade's most valuable fallback &mdash; when the payer
+          name is unreadable, an invoice reference that resolves tells you who paid.</figcaption>
+      </figure>
+
+      <h3>Measured on the 800-payment dataset</h3>
+
+      <div class="stats">
+        <div class="stat">
+          <span class="v">97.2<span style="font-size:.62em">%</span></span>
+          <span class="k">Produced candidates</span>
+        </div>
+        <div class="stat">
+          <span class="v">17</span>
+          <span class="k">Ambiguous</span>
+        </div>
+        <div class="stat">
+          <span class="v">22</span>
+          <span class="k">No candidates</span>
+        </div>
+        <div class="stat">
+          <span class="v">0.4<span style="font-size:.62em">s</span></span>
+          <span class="k">Whole run</span>
+        </div>
+      </div>
+      <p class="caption"><strong>Candidate rate is not the auto-match rate.</strong> Some of those
+        778 are ambiguous and some will be wrong. Scoring and thresholding are Phase 5; measuring
+        correctness against the answer key is Phase 6. Quoting 97.2% as an auto-match rate would
+        be exactly the kind of overclaim an interviewer is listening for.</p>
+
+      <h3>Why subset-sum does not explode</h3>
+
+      <div class="measure">
+        <p>Subset-sum is NP-complete, so every bit of the engineering is in the pruning. Three
+          prunes run before the search starts: scope to the identified customer, trim to a date
+          window around the payment, and cap the combination size at <em>k</em>.</p>
+      </div>
+
+      <div class="table-wrap">
+        <table class="data">
+          <thead>
+            <tr><th>With n = 45 candidate invoices, k = 5</th><th class="num">Combinations</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Unpruned power set, 2<sup>n</sup></td>
+              <td class="num key">35,184,372,088,832</td>
+            </tr>
+            <tr>
+              <td>Admitted by the size cap, &Sigma;&nbsp;C(45,&nbsp;i&nbsp;&le;&nbsp;5)</td>
+              <td class="num key">1,385,979</td>
+            </tr>
+            <tr>
+              <td>Actually visited, after the arithmetic prunes</td>
+              <td class="num key">tens to hundreds</td>
+            </tr>
+            <tr>
+              <td>Across the entire 800-payment run</td>
+              <td class="num key">681,620</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="measure">
+        <p>The size cap turns <strong>O(2&#8319;)</strong> into
+          <strong>O(n<sup>k</sup>&nbsp;/&nbsp;k!)</strong> &mdash; polynomial in n for fixed k. The
+          two arithmetic prunes then cut most of what remains, and they work because every amount
+          is positive: abandon a branch once the running total overshoots, and abandon the whole
+          tail once the running total plus everything still available falls short. Sorting
+          candidates descending makes both fire early.</p>
+        <p>Integer paise is what makes this answerable at all. &ldquo;Does this set total exactly
+          the payment?&rdquo; is an equality test on integers; over floats it would be an epsilon
+          comparison, and a subset-sum over epsilon comparisons is not a well-posed question.</p>
+      </div>
+
+      <div class="callout caution">
+        <p><strong>The cost of the cap, stated plainly.</strong> A genuine seven-invoice bundle
+          will not be found at k&nbsp;=&nbsp;5. That is the correct failure: it goes to the review
+          queue rather than producing a confident wrong answer. Every limit in this engine &mdash;
+          the size cap, the search budget, the ambiguity margin &mdash; is tuned to fail towards
+          review rather than towards a guess.</p>
+      </div>
+
+      <h3>Two bugs the tests caught</h3>
+
+      <div class="measure">
+        <p>Worth having ready: interviewers ask what went wrong, and &ldquo;nothing&rdquo; is never
+          a good answer. Both of these were found by assertions, not by reading the code.</p>
+      </div>
+
+      <div class="table-wrap">
+        <table class="data">
+          <thead>
+            <tr><th>Bug</th><th>What happened, and the fix</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="key">Deduction plausibility<br>measured against the<br>wrong denominator</td>
+              <td>A payment resolved all three of its invoices correctly and the gap was exactly
+                the real claim &mdash; &#8377;4,900 on a &#8377;56,865 invoice, a routine 8.6%
+                damage adjustment. But plausibility was being measured against the
+                <em>three-invoice remittance total</em> of &#8377;10.9 lakh, where the same claim
+                is 0.45% and fell below the floor. The reading was rejected and the payment fell
+                through to a combinatorial search that produced three <em>wrong</em> ambiguous
+                readings. A deduction is raised against one invoice, so it must be judged against
+                that invoice. Fixing the denominator cut ambiguous outcomes from 30 to 17.</td>
+            </tr>
+            <tr>
+              <td class="key">The amount tolerance<br>was inventing money</td>
+              <td>Five invoices totalled 31 paise more than the payment &mdash; inside the
+                &#8377;1 tolerance, so the set matched and every invoice was allocated in full.
+                That applies 31 paise of cash the bank never sent, and the ledger would not
+                balance. The tolerance exists so rounding does not cost a match, not so the
+                ledger can invent money. The difference is now written off against the smallest
+                invoice, keeping both invariants true: applied cash ties to the credit received,
+                and each line still clears its invoice.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="measure">
+        <p>The second one is the more interesting story. It was caught by a property test asserting
+          that no candidate ever allocates more than arrived &mdash; the kind of invariant that is
+          obvious once written down and invisible until then. It would never have shown up in a
+          demo; it would have shown up in a reconciliation six months into production.</p>
+      </div>
+
+      <h3>What the engine refuses to do</h3>
+
+      <div class="table-wrap">
+        <table class="data">
+          <thead>
+            <tr><th>Situation</th><th>Response</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="key">Two customers score 94.4 and 94.4</td>
+              <td>Refuse. An ambiguity margin requires the best fuzzy match to beat the runner-up
+                by a configured gap. Two names a point apart is a coin flip, and a coin flip that
+                posts money against the wrong account is the failure this project exists to
+                avoid.</td>
+            </tr>
+            <tr>
+              <td class="key">Payer name says one customer,<br>the reference says another</td>
+              <td>Refuse, and record both readings. Picking one would be guessing with
+                high apparent confidence.</td>
+            </tr>
+            <tr>
+              <td class="key">Several invoice sets<br>tie on amount</td>
+              <td>Return all of them and flag the outcome ambiguous. The reviewer sees the real
+                alternatives rather than an arbitrary pick.</td>
+            </tr>
+            <tr>
+              <td class="key">A reference like INV-00042-A</td>
+              <td>Do not resolve it to INV-00042. A revision suffix makes it a different document,
+                and quietly matching it would be confident and wrong.</td>
+            </tr>
+            <tr>
+              <td class="key">The search budget runs out</td>
+              <td>Stop, and say so in the diagnostics. A silent partial search that reports "no
+                match" is worse than one that admits it gave up.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="measure">
+        <h3>Where Phase 3 deliberately stops</h3>
+        <p>The engine writes nothing. It answers &ldquo;which invoices could this payment be
+          settling, and by what reasoning?&rdquo; and hands over a signal trail. It does not
+          answer &ldquo;should we post this automatically?&rdquo;</p>
+        <p>Keeping those apart means the thresholds can be re-tuned in Phase 5 without re-running
+          the search, and that the same candidate set can be scored differently for a conservative
+          client and an aggressive one. It also means a test can assert, flatly, that matching
+          changes no row in the database &mdash; which it does.</p>
+      </div>
+    </section>
+
+    <!-- ===================================================== 08 -->
+    <section id="extraction">
+      <h2><span class="n">08</span><span>Extraction</span></h2>
+      <div class="rule"></div>
+
+      <div class="measure">
+        <p class="lede">The LLM proposes structure. It never decides anything, and nothing it
+          says is believed without the arithmetic agreeing.</p>
+        <p>That sentence is the whole design. Everything below is the machinery that makes it
+          true, and the reason a language model is safe to point at a ledger at all.</p>
+      </div>
+
+      <figure>
+        <svg viewBox="0 0 960 330" role="img"
+             aria-label="Extraction pipeline: a document goes to the provider with a schema-constrained prompt; the answer is validated, retried once on failure, and falls back to a rule-based extractor; the result is then cross-checked against the bank credit before reaching the matcher.">
+          <defs>
+            <marker id="ah4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7"
+                    orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"></path>
+            </marker>
+          </defs>
+
+          <rect class="svg-box" x="14" y="100" width="126" height="54" rx="2"></rect>
+          <text class="svg-title" x="77" y="122" text-anchor="middle">Document</text>
+          <text class="svg-sub" x="77" y="137" text-anchor="middle">email / PDF</text>
+
+          <rect class="svg-box" x="172" y="100" width="134" height="54" rx="2"></rect>
+          <text class="svg-title" x="239" y="122" text-anchor="middle">Prompt</text>
+          <text class="svg-sub" x="239" y="137" text-anchor="middle">few-shot, schema</text>
+
+          <rect class="svg-box" x="338" y="100" width="134" height="54" rx="2"></rect>
+          <text class="svg-title" x="405" y="122" text-anchor="middle">Provider</text>
+          <text class="svg-sub" x="405" y="137" text-anchor="middle">mock / Gemini / off</text>
+
+          <rect class="svg-box" x="504" y="100" width="134" height="54" rx="2"></rect>
+          <text class="svg-title" x="571" y="122" text-anchor="middle">Validate</text>
+          <text class="svg-sub" x="571" y="137" text-anchor="middle">strict Pydantic</text>
+
+          <rect class="svg-box-key" x="670" y="100" width="146" height="54" rx="2"></rect>
+          <text class="svg-title" x="743" y="122" text-anchor="middle">Cross-check</text>
+          <text class="svg-sub" x="743" y="137" text-anchor="middle">vs the real credit</text>
+
+          <rect class="svg-box" x="848" y="100" width="100" height="54" rx="2"></rect>
+          <text class="svg-title" x="898" y="122" text-anchor="middle">Matcher</text>
+          <text class="svg-sub" x="898" y="137" text-anchor="middle">step 3a</text>
+
+          <line class="svg-edge" x1="140" y1="127" x2="166" y2="127" marker-end="url(#ah4)"></line>
+          <line class="svg-edge" x1="306" y1="127" x2="332" y2="127" marker-end="url(#ah4)"></line>
+          <line class="svg-edge" x1="472" y1="127" x2="498" y2="127" marker-end="url(#ah4)"></line>
+          <line class="svg-edge-key" x1="638" y1="127" x2="664" y2="127" marker-end="url(#ah4)"></line>
+          <line class="svg-edge-key" x1="816" y1="127" x2="842" y2="127" marker-end="url(#ah4)"></line>
+
+          <text class="svg-lab" x="485" y="94" text-anchor="middle">JSON</text>
+          <text class="svg-lab-key" x="651" y="94" text-anchor="middle">paise</text>
+
+          <!-- retry loop -->
+          <polyline class="svg-edge" points="571,100 571,56 405,56 405,94"
+                    marker-end="url(#ah4)"></polyline>
+          <text class="svg-lab" x="488" y="50" text-anchor="middle">invalid: retry once, with the error fed back</text>
+
+          <!-- fallback -->
+          <rect class="svg-box" x="338" y="226" width="300" height="50" rx="2"></rect>
+          <text class="svg-title" x="488" y="247" text-anchor="middle">Rule-based extractor</text>
+          <text class="svg-sub" x="488" y="262" text-anchor="middle">no key, no network, no cost</text>
+
+          <polyline class="svg-edge" points="571,154 571,200 638,200 638,226"
+                    marker-end="url(#ah4)"></polyline>
+          <text class="svg-lab" x="585" y="196">invalid twice</text>
+
+          <polyline class="svg-edge" points="405,154 405,200 360,200 360,226"
+                    marker-end="url(#ah4)"></polyline>
+          <text class="svg-lab" x="250" y="196">provider unreachable</text>
+
+          <polyline class="svg-edge-key" points="638,251 743,251 743,160"
+                    marker-end="url(#ah4)"></polyline>
+          <text class="svg-lab-key" x="752" y="212">still cross-checked</text>
+
+          <text class="svg-lab" x="898" y="300" text-anchor="middle">flagged if it does not tie</text>
+          <polyline class="svg-edge-soft" points="743,160 743,290 858,290"
+                    marker-end="url(#ah4)"></polyline>
+        </svg>
+        <figcaption>Every path ends at the same cross-check (teal). Whether the structure came
+          from a model, a retry, or the rules, it is reconciled against the money that actually
+          arrived before it is allowed to influence anything.</figcaption>
+      </figure>
+
+      <h3>The five layers, and what each one is for</h3>
+
+      <div class="table-wrap">
+        <table class="data">
+          <thead>
+            <tr><th>Layer</th><th>What it prevents</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="key">Amounts typed as<br><strong>strings</strong> in the schema</td>
+              <td>A model asked for a number emits <code>418500.1</code> and
+                <code>json.loads</code> hands back a float. By the time that float exists the
+                precision damage is done. Strings force the conversion through
+                <code>rupees_to_paise()</code>, which refuses anything it cannot represent
+                exactly. This is rule 1 of the project expressed as a type, not a code review
+                comment.</td>
+            </tr>
+            <tr>
+              <td class="key">Strict Pydantic<br>validation</td>
+              <td>Malformed structure never reaches the matcher. A line claiming to overpay its
+                own invoice is dropped; a reference that cannot be normalised is dropped; the
+                rest of the document survives.</td>
+            </tr>
+            <tr>
+              <td class="key">One retry, with the<br>error fed back</td>
+              <td>A blind second call usually reproduces the first mistake. Returning the
+                validator's complaint to the model is what makes the retry worth paying for.
+                One retry, not three &mdash; past that the rules are cheaper and more
+                predictable.</td>
+            </tr>
+            <tr>
+              <td class="key">Rule-based fallback</td>
+              <td>Total dependence on an external service. It handles the common shapes
+                outright, needs no key and no network, and the method used is recorded per row
+                so Phase 5 can weight an LLM result differently from a regex one.</td>
+            </tr>
+            <tr>
+              <td class="key">Arithmetic cross-check<br>against the real credit</td>
+              <td><strong>The one that matters.</strong> A hallucinated figure almost never
+                balances against a real bank payment. An extraction that does not tie is kept
+                but flagged &mdash; its invoice references are often still correct &mdash; and
+                the matcher re-verifies the arithmetic independently before proposing
+                anything.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Measured on the 435 advice documents</h3>
+
+      <div class="stats">
+        <div class="stat">
+          <span class="v">99.3<span style="font-size:.62em">%</span></span>
+          <span class="k">Yielded invoice lines</span>
+        </div>
+        <div class="stat">
+          <span class="v">723</span>
+          <span class="k">References extracted</span>
+        </div>
+        <div class="stat">
+          <span class="v">74</span>
+          <span class="k">Claims found</span>
+        </div>
+        <div class="stat">
+          <span class="v">99.5<span style="font-size:.62em">%</span></span>
+          <span class="k">Cross-check ties</span>
+        </div>
+      </div>
+      <p class="caption">188 of the 189 extractions that could be checked tie exactly against
+        the bank credit. The remaining 246 documents are not linked to a payment yet, so there
+        is nothing to check them against.</p>
+
+      <h3>What the advice actually buys</h3>
+
+      <div class="table-wrap">
+        <table class="data">
+          <thead>
+            <tr>
+              <th>On 800 payments</th>
+              <th class="num">Without advice</th>
+              <th class="num">With advice</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Produced candidates</td>
+              <td class="num key">778 (97.2%)</td>
+              <td class="num key">779 (97.4%)</td>
+            </tr>
+            <tr>
+              <td>Ambiguous</td>
+              <td class="num key">17</td>
+              <td class="num key">16</td>
+            </tr>
+            <tr>
+              <td>Led by the advice</td>
+              <td class="num key">0</td>
+              <td class="num key">189</td>
+            </tr>
+            <tr>
+              <td>Detected gaps carrying a real reason code</td>
+              <td class="num key">0 of 132</td>
+              <td class="num key">22 of 132</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout">
+        <p><strong>The honest reading, and the one worth giving in an interview:</strong> at this
+          coverage the advice mostly <em>corroborates</em> rather than adds. Only 196 of 800
+          payments have advice linked to them, and the bank narration already carries a usable
+          reference for most of those. Coverage barely moved.</p>
+        <p>Where it genuinely changes the picture is <strong>reason codes</strong>. The matcher
+          can detect <em>that</em> money was withheld &mdash; the arithmetic shows a gap &mdash;
+          but only the customer's own words say <em>why</em>. A claim with no category cannot be
+          routed to logistics or trade marketing; it just sits in a queue. That number went from
+          zero to 22.</p>
+      </div>
+
+      <h3>Three bugs the tests caught here</h3>
+
+      <div class="table-wrap">
+        <table class="data">
+          <thead>
+            <tr><th>Bug</th><th>What happened, and the fix</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="key">Amounts were being read<br>as invoice references</td>
+              <td>An advice document is full of numbers. <code>10,94,691.97</code> was being
+                shredded into references <code>10</code>, <code>94</code> and <code>69197</code>,
+                and <code>Wed, 21 Jan 2026</code> into <code>21</code> and <code>2026</code>.
+                Across the corpus that inflated 723 real references to <strong>2,669</strong>.
+                Fix: locate the money first and blank it out, so reference detection never sees
+                an amount's digits &mdash; and stop treating bare numbers as references inside a
+                document, where they are always labelled.</td>
+            </tr>
+            <tr>
+              <td class="key">The wire format could not<br>express what the extractor<br>had already read</td>
+              <td>A PDF states its claim twice: once as a table column, once as a sentence
+                underneath. The column gives the amount with no words to classify; the sentence
+                gives the reason but names no invoice. The rules read both &mdash; but the JSON
+                schema a model may return had no field for an unattributed claim, so the
+                reason was silently dropped on the way through the pipeline. <strong>Every claim
+                in the corpus stayed "unknown" and could not be routed anywhere.</strong> Fix:
+                the wire format now carries it, and the model is taught not to guess which line
+                it belongs to.</td>
+            </tr>
+            <tr>
+              <td class="key">The same claim<br>counted twice</td>
+              <td>Netted off the line <em>and</em> subtracted again at document level, so a
+                document that explained its payment perfectly failed to reconcile. Masked in the
+                metrics only because the document also printed an explicit total that happened
+                to tie.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="measure">
+        <p>The second is the one worth telling. It is not a parsing bug &mdash; the parser was
+          right. It is a <em>schema</em> bug: the validated form could represent something the
+          wire format could not, and the gap between them quietly swallowed the most valuable
+          thing the extractor produced. Nothing crashed, no test failed until one asked whether
+          any claim in the corpus had ever acquired a category. The answer was no.</p>
+      </div>
+
+      <h3>The LLM is genuinely optional</h3>
+
+      <div class="table-wrap">
+        <table class="data">
+          <thead>
+            <tr><th><code>LLM_MODE</code></th><th>Behaviour</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="key">mock <em>(default)</em></td>
+              <td>Deterministic stand-in. No key, no network, no cost. A cold clone of the
+                repository runs the full pipeline and all 328 tests. It is not a model and not a
+                benchmark of one &mdash; it is a guarantee that the plumbing around a model
+                works without one.</td>
+            </tr>
+            <tr>
+              <td class="key">off</td>
+              <td>Rules only. No provider is constructed at all.</td>
+            </tr>
+            <tr>
+              <td class="key">live</td>
+              <td>Google Gemini, schema-constrained JSON at temperature 0.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout caution">
+        <p><strong>The live path, reported accurately.</strong> The client, model and request
+          shape are verified working against the real API. A full corpus run was <em>not</em>
+          completed live, because Gemini was returning <code>503 UNAVAILABLE</code> under load
+          at the time.</p>
+        <p>Which turned out to be the most useful test available: the provider failed, the
+          pipeline fell back to the rules, recorded the failure honestly on the row, and still
+          produced an extraction that reconciled against the credit. That is the resilience the
+          design promises, demonstrated against a real outage rather than a mock of one.</p>
+      </div>
+    </section>
+
+    <!-- ===================================================== 09 -->
+    <section id="confidence">
+      <h2><span class="n">09</span><span>Confidence</span></h2>
+      <div class="rule"></div>
+
+      <div class="measure">
+        <p class="lede">Five signals, a weighted sum, three penalties, two thresholds. The
+          arithmetic is simple on purpose.</p>
+        <p>A controller can be walked through any number this produces in about a minute, and a
+          client who wants fewer errors moves one threshold and sees the trade immediately. A
+          gradient-boosted model over the same signals would almost certainly score better once
+          there is labelled review history &mdash; and the breakdown stored on every decision is
+          exactly the training set it would need.</p>
+      </div>
+
+      <div class="table-wrap">
+        <table class="data">
+          <thead>
+            <tr><th>Signal</th><th class="num">Weight</th><th>What it asks</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="key">reference_match</td>
+              <td class="num key">0.34</td>
+              <td>Did the customer actually name these invoices &mdash; in the narration or in
+                their own advice? By far the strongest evidence available.</td>
+            </tr>
+            <tr>
+              <td class="key">amount_match</td>
+              <td class="num key">0.26</td>
+              <td>How cleanly does the money land? An exact tie scores full; a subset found by
+                search scores 0.80 because several sets can tie; an inferred deduction scores
+                0.55 because it is a guess about intent.</td>
+            </tr>
+            <tr>
+              <td class="key">customer_identity</td>
+              <td class="num key">0.18</td>
+              <td>Exact name and known alias both score 1.0 &mdash; an alias is an exact lookup
+                against a spelling a human already confirmed. A fuzzy hit carries its own
+                similarity score.</td>
+            </tr>
+            <tr>
+              <td class="key">remittance_agreement</td>
+              <td class="num key">0.14</td>
+              <td>Does the customer's own advice corroborate this reading, and did its
+                arithmetic tie against the credit?</td>
+            </tr>
+            <tr>
+              <td class="key">date_proximity</td>
+              <td class="num key">0.08</td>
+              <td>Is the money arriving when these invoices would plausibly settle? The weakest
+                signal by design &mdash; a chronic late payer is still paying their own
+                invoices, so this breaks ties and decides nothing.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h4>Penalties, applied as multipliers</h4>
+      <div class="measure">
+        <p>Multiplicative rather than subtractive on purpose: an ambiguity should scale down
+          whatever confidence the evidence produced, not shave a fixed amount off it. Two
+          invoice sets tying on amount is just as damning for a strong match as a weak one.</p>
+      </div>
+
+      <div class="table-wrap">
+        <table class="data">
+          <thead>
+            <tr><th>Penalty</th><th class="num">Multiplier</th><th>When, and why that size</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="key">ambiguous</td>
+              <td class="num key">&times;0.55</td>
+              <td>Several readings tie and nothing separates them. Sized so it sinks even a
+                flawless match below the auto threshold on its own &mdash; a test asserts that.
+                Picking one would be a coin flip posted with high confidence.</td>
+            </tr>
+            <tr>
+              <td class="key">unreconciled_advice</td>
+              <td class="num key">&times;0.92</td>
+              <td>The advice guiding the match did not reconcile against the credit. Mild,
+                because its invoice references are usually still right.</td>
+            </tr>
+            <tr>
+              <td class="key">residual_cash</td>
+              <td class="num key">&times;0.85</td>
+              <td>Not every paise could be placed. A match that cannot account for the whole
+                credit should not post itself.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>The bug that was worth 65 points of auto-match rate</h3>
+
+      <div class="measure">
+        <p>First run of the scorer: <strong>22.6%</strong> auto-applied, with 477 of 800
+          payments piled into the 0.80&ndash;0.89 band &mdash; directly under the 0.90
+          threshold. The obvious move is to drop the threshold to 0.85.</p>
+        <p>That would have been wrong, and would have hidden the actual defect. Here is the
+          signal breakdown of the single strongest match in the whole run:</p>
+      </div>
+
+      <pre><code>UTR2026012500682   base = 0.8600
+
+  reference_match        value 1.00   weight 0.34   ->  0.3400
+  amount_match           value 1.00   weight 0.26   ->  0.2600
+  customer_identity      value 1.00   weight 0.18   ->  0.1800
+  remittance_agreement   value 0.00   weight 0.14   ->  0.0000   &lt;-- no advice exists
+  date_proximity         value 1.00   weight 0.08   ->  0.0800
+                                                       ------
+                                                       0.8600</code></pre>
+
+      <div class="measure">
+        <p>Exact reference, exact amount, exact payer name, paid on time. There is nothing more
+          this match could have done &mdash; and it <em>could never reach 0.90</em>, because the
+          0.14 advice weight sat in the denominator for the three quarters of customers who
+          simply never send an advice document. The signal was behaving as a penalty for
+          something that is not a fault.</p>
+      </div>
+
+      <div class="callout">
+        <p><strong>The fix: score against the evidence that exists, not the evidence that could
+          exist.</strong> Each signal now declares whether it is <em>applicable</em>, and the
+          weighted sum divides by the applicable weight only. Confidence then means "how much of
+          the available evidence supports this" &mdash; the only thing it can honestly mean.</p>
+        <p>Note what stays applicable: a missing <em>reference</em> still scores zero rather than
+          being excluded, because the absence of a reference genuinely weakens a match. And
+          excluding the advice weight makes that cost <em>larger</em>: with no advice, the
+          reference now carries 0.34/0.86 of the decision instead of 0.34/1.00.</p>
+      </div>
+
+      <div class="measure">
+        <p>Auto-match rate: <strong>22.6% &rarr; 87.2%</strong>. The threshold never moved.</p>
+      </div>
+
+      <h3>What the engine decided</h3>
+
+      <div class="stats">
+        <div class="stat">
+          <span class="v">87.2<span style="font-size:.62em">%</span></span>
+          <span class="k">Auto-applied &mdash; 698</span>
+        </div>
+        <div class="stat">
+          <span class="v">8.0<span style="font-size:.62em">%</span></span>
+          <span class="k">Needs review &mdash; 64</span>
+        </div>
+        <div class="stat">
+          <span class="v">4.8<span style="font-size:.62em">%</span></span>
+          <span class="k">Unapplied &mdash; 38</span>
+        </div>
+        <div class="stat">
+          <span class="v">100<span style="font-size:.62em">%</span></span>
+          <span class="k">Precision (measured)</span>
+        </div>
+      </div>
+      <p class="caption">These were the Phase 5 numbers. Phase 6 then measured precision at
+        97.28% &mdash; 19 wrong &mdash; and the fix for those errors moved the final figures to
+        <strong>81.9% auto-applied at 100% precision</strong>. See <a href="#results">Results</a>
+        for what the 19 turned out to be.</p>
+
+      <h3>Recording a decision is not posting the cash</h3>
+
+      <div class="measure">
+        <p>Two steps, deliberately separate. <code>apply</code> writes a
+          <code>match_results</code> row with its allocations and the full explanation, and
+          changes no invoice balance. <code>apply --post</code> additionally reduces open
+          amounts and marks transactions.</p>
+        <p>That split is not ceremony. A real first deployment runs in suggest-only mode for
+          weeks while the client watches the precision number, and an engine that can only run
+          in post mode cannot be deployed that way at all.</p>
+      </div>
+
+      <div class="table-wrap">
+        <table class="data">
+          <thead>
+            <tr><th>Posting, verified end to end</th><th class="num">Result</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Open receivables before &rarr; after</td>
+                <td class="num key">&#8377;96.5 cr &rarr; &#8377;43.2 cr</td></tr>
+            <tr><td>Invoices moved to paid / partially paid</td>
+                <td class="num key">1,043 / 79</td></tr>
+            <tr><td>Transactions marked matched</td><td class="num key">698</td></tr>
+            <tr><td>Audit entries written</td><td class="num key">698</td></tr>
+            <tr><td>Invoices driven negative</td><td class="num key">0</td></tr>
+            <tr><td>Re-running <code>--post</code></td>
+                <td class="num key">0 invoices touched</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="measure">
+        <p>Idempotency comes from the transaction's own status, which is what that column has
+          been there for since Phase 1. Posting the same payment twice would clear its invoices
+          twice and corrupt the customer's balance, so a payment that is no longer
+          <code>unmatched</code> is never posted again.</p>
+        <p>One more guard worth naming: re-running the engine replaces <em>its own</em> previous
+          verdict, but never one a human has touched. Overwriting an analyst's judgement with a
+          fresh machine guess would be the worst behaviour available here.</p>
+      </div>
+
+      <h3>What a stored decision looks like</h3>
+
+      <div class="measure">
+        <p>Every <code>match_results</code> row carries both halves of the story: how the
+          candidates were found, and how they were scored. A reviewer who can see only one of
+          those has to redo the other.</p>
+      </div>
+
+      <pre><code>{
+  "decision": "auto_applied",
+  "confidence": 1.0,
+  "base_score": 1.0,
+  "applicable_weight": 0.86,
+  "excluded_signals": ["remittance_agreement"],
+  "signals": [
+    {"name": "reference_match",   "fired": true,  "applicable": true,
+     "value": 1.0, "weight": 0.34, "contribution": 0.34,
+     "detail": "An invoice reference in the bank narration resolved to these open items."},
+    ...
+  ],
+  "penalties": [],
+  "reason": "Applied automatically at 100% confidence: INV-00042. ...",
+  "matching": { "trail": [...], "candidates": [...], "diagnostics": {...} }
+}</code></pre>
+      <p class="caption"><code>applicable_weight</code> and <code>excluded_signals</code> are
+        there so the contributions visibly add up. Without them a reviewer cannot check the
+        arithmetic by hand, and an explanation you cannot verify is not an explanation.</p>
+    </section>
+
+    <!-- ===================================================== 10 -->
+    <section id="product">
+      <h2><span class="n">10</span><span>The product</span></h2>
+      <div class="rule"></div>
+
+      <div class="measure">
+        <p class="lede">Twelve REST endpoints and a React review queue whose only job is to
+          make a review decision take two minutes instead of twenty.</p>
+        <p>This is the part a client actually touches. Everything before it is machinery;
+          this is where an AR analyst spends their morning, and the measure of it is whether
+          they can act on an item without reconstructing the engine's reasoning first.</p>
+      </div>
+
+      <h3>Money never crosses the wire as a number</h3>
+
+      <pre><code>{
+  "statement_ref": "UTR2026080400580",
+  "amount": { "paise": 74635976, "display": "₹7,46,359.76" },
+  "confidence": 0.6,
+  "decision": "needs_review"
+}</code></pre>
+
+      <div class="measure">
+        <p>A JSON number for money invites a float on the other side, and a balance that is
+          one paise wrong is impossible to explain to a customer. Every amount is an integer
+          with a formatted string beside it: the integer is authoritative, the string is for
+          display, and the UI never does arithmetic on either.</p>
+        <p>A test walks every API payload recursively and asserts that every money-shaped
+          object has an <code>int</code> in it. Rule 1 of the project, enforced at the
+          boundary rather than hoped for.</p>
+      </div>
+
+      <h3>What a reviewer sees</h3>
+
+      <pre><code>✕ reference_match       0.00 × 0.34 = 0.000   No invoice reference anywhere;
+                                                the match rests on amount and payer.
+✓ amount_match          1.00 × 0.26 = 0.260   Found by amount_exact, settling as exact.
+✓ customer_identity     1.00 × 0.18 = 0.180   Payer matched a spelling already on file.
+– remittance_agreement         not applicable  No advice is linked to this payment, so
+                                                there is nothing to corroborate against.
+✓ date_proximity        0.95 × 0.08 = 0.076   Landed 43 days from the furthest due date.
+
+base 0.600 ÷ applicable weight 0.86 → confidence 60.0% · excluded: remittance_agreement</code></pre>
+
+      <div class="measure">
+        <p>The arithmetic is shown because an explanation you cannot check by hand is not an
+          explanation. 0.260 + 0.180 + 0.076 = 0.516, divided by 0.86, is 60.0% &mdash; a
+          reviewer can verify that in their head and decide whether they agree with the
+          weighting, not just with the answer.</p>
+        <p><strong>Three signal states, not two.</strong> Fired, did not fire, and <em>not
+          applicable</em>. That distinction is the one the Phase 5 bug turned on, and showing
+          it means a reviewer never wonders whether the matcher looked at something or simply
+          found nothing there.</p>
+      </div>
+
+      <h3>Three guards on anything that moves money</h3>
+
+      <div class="table-wrap">
+        <table class="data">
+          <thead>
+            <tr><th>Guard</th><th>Why it has to exist</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="key">An item cannot be<br>reviewed twice</td>
+              <td>Two analysts working the same queue must not both post the same cash. The
+                second attempt gets a 422 naming who already handled it and when &mdash; not
+                a bare error, because the next thing that person does depends on knowing
+                that.</td>
+            </tr>
+            <tr>
+              <td class="key">A reassignment cannot<br>over-apply</td>
+              <td>Two separate checks: not more than the invoice still has open, and not more
+                than the bank actually sent. People make arithmetic mistakes and a UI can be
+                used wrongly. Each refusal quotes the real figures rather than saying
+                "invalid".</td>
+            </tr>
+            <tr>
+              <td class="key">A human's decision is<br>never overwritten</td>
+              <td>Re-running the engine replaces its own previous verdict, but any result
+                with <code>reviewed_at</code> set is left alone. Replacing an analyst's
+                judgement with a fresh machine guess is the worst behaviour available
+                here.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>The feedback loop, finally closed</h3>
+
+      <div class="callout">
+        <p>When an analyst approves a match whose payer spelling the matcher could
+          <em>not</em> resolve, that spelling is written to the alias table as
+          <code>source = 'learned'</code>. The next payment from the same spelling resolves
+          by index lookup instead of fuzzy matching, and never reaches the queue at all.</p>
+        <p>That is the loop the <code>customer_aliases</code> table was designed for in Phase
+          1, drawn as the dashed path in the architecture diagram, and only now actually
+          wired up. <strong>The review queue is not merely a safety net &mdash; it is the
+          mechanism by which the system gets better.</strong> Every item an analyst clears
+          is a labelled example, and the alias is the cheapest possible way of using one.</p>
+        <p>It is also the honest answer to "how does this improve over time?" without
+          reaching for machine learning: the first improvement loop costs one table and one
+          function.</p>
+      </div>
+
+      <h3>Deployment shape</h3>
+
+      <div class="measure">
+        <p>Three containers. Postgres, the API, and nginx serving the built React bundle and
+          proxying <code>/api</code> to the backend &mdash; so the browser only ever talks to
+          one origin and CORS never enters the picture in production. CORS is configured for
+          development only, and locked to localhost rather than <code>*</code>, so it is not
+          a habit that ships.</p>
+        <p>The upload endpoint takes CSV because that is what a demo can use. A production
+          deployment receives CAMT.053 or MT940 from the bank, and swapping the parser is the
+          whole of that change: everything downstream takes transaction rows and does not care
+          where they came from.</p>
+      </div>
+    </section>
+
+    <!-- ===================================================== 11 -->
+    <section id="stack">
+      <h2><span class="n">11</span><span>Tech stack</span></h2>
+      <div class="rule"></div>
+
+      <div class="measure">
+        <p>Every row here is a question you can be asked. The third column is the part worth
+          rehearsing &mdash; knowing what you did not choose, and why, is what separates a decision
+          from a default.</p>
+      </div>
+
+      <div class="table-wrap">
+        <table class="data">
+          <thead>
+            <tr><th>Choice</th><th>Why</th><th>Considered instead</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="key">PostgreSQL 16</td>
+              <td>Relational integrity is the point: foreign keys, check constraints and
+                transactions are what stop money being allocated twice. JSONB gives schemaless
+                room for the explanation payload without giving up any of that.</td>
+              <td>MongoDB &mdash; rejected; the invariants here are relational and enforcing them in
+                application code is strictly worse.</td>
+            </tr>
+            <tr>
+              <td class="key">SQLAlchemy 2.x<br>(typed ORM)</td>
+              <td>Typed <code>Mapped[]</code> declarations mean the schema is checkable by a type
+                checker, and the same models drive both Alembic migrations and the test
+                fixtures.</td>
+              <td>Raw SQL &mdash; fine for the matcher's hot queries, poor for an eight-table
+                domain model under active change.</td>
+            </tr>
+            <tr>
+              <td class="key">Integer paise</td>
+              <td>Exact. Subset-sum asks &ldquo;does this set total exactly the payment?&rdquo;
+                thousands of times; with floats that question has no reliable answer.</td>
+              <td><code>Decimal</code> &mdash; also exact, but slower in tight arithmetic and easy
+                to lose to a stray float via JSON.</td>
+            </tr>
+            <tr>
+              <td class="key">Alembic</td>
+              <td>Schema changes are versioned and reversible. A test runs the migration against a
+                throwaway database and diffs the result against the models, so the two cannot
+                drift.</td>
+              <td><code>create_all()</code> &mdash; fine for a demo, unusable the moment real data
+                exists.</td>
+            </tr>
+            <tr>
+              <td class="key">SQLite for tests,<br>Postgres for deployment</td>
+              <td>The suite runs in seconds with no Docker, which keeps the feedback loop tight.
+                The cost &mdash; a portable schema &mdash; was designed in from the first commit
+                via a type-variant layer.</td>
+              <td>Testcontainers &mdash; higher fidelity, but every test run then needs a Docker
+                daemon.</td>
+            </tr>
+            <tr>
+              <td class="key">rapidfuzz</td>
+              <td>C++-backed fuzzy string matching, fast enough to score a payer name against
+                thousands of customers inside a request.</td>
+              <td>fuzzywuzzy &mdash; same algorithms, markedly slower.</td>
+            </tr>
+            <tr>
+              <td class="key">Google Gemini,<br>behind an interface</td>
+              <td>Used only to turn messy free text into structured candidates. Output is validated
+                against a Pydantic schema, retried once, and cross-checked against the bank amount
+                before it influences anything.</td>
+              <td>An LLM making the match decision itself &mdash; rejected; non-deterministic,
+                unauditable, and impossible to threshold-tune.</td>
+            </tr>
+            <tr>
+              <td class="key">FastAPI + Pydantic v2</td>
+              <td>Request and response validation from the same type annotations, with OpenAPI docs
+                generated automatically for whoever integrates next.</td>
+              <td>Flask &mdash; would need the validation layer hand-built.</td>
+            </tr>
+            <tr>
+              <td class="key">React + Vite + Tailwind</td>
+              <td>The review queue is the product surface for an analyst. Fast iteration matters
+                more than framework sophistication.</td>
+              <td>Server-rendered templates &mdash; adequate, but the review interactions are
+                stateful enough to justify a component model.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Where the LLM sits &mdash; and where it does not</h3>
+      <div class="measure">
+        <p>This is the distinction the project is built around, and a likely interview probe. The
+          LLM reads unstructured text and proposes structure. It never decides anything, never
+          produces a number that is trusted on its own, and is never required for the system to
+          run.</p>
+        <ul class="plain">
+          <li><strong>Schema-constrained.</strong> Output must validate against a strict Pydantic
+            model, or it is rejected.</li>
+          <li><strong>One retry.</strong> Invalid output is retried once with the validation error
+            fed back, then abandoned.</li>
+          <li><strong>Cross-checked.</strong> Extracted per-invoice amounts must reconcile against
+            the actual bank credit. If they do not, the extraction is distrusted rather than
+            believed.</li>
+          <li><strong>Optional.</strong> A regex extractor covers the common patterns, and a mock
+            mode makes the entire test suite runnable with no API key and no network. The
+            extraction method is recorded on every row, because an LLM result and a regex result do
+            not deserve equal confidence.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ===================================================== 12 -->
+    <section id="decisions">
+      <h2><span class="n">12</span><span>Design calls</span></h2>
+      <div class="rule"></div>
+
+      <div class="measure">
+        <p>Six rules the codebase enforces mechanically rather than by convention, because a rule
+          that lives only in a code review is a rule that eventually breaks.</p>
+      </div>
+
+      <div class="table-wrap">
+        <table class="data">
+          <thead>
+            <tr><th>Rule</th><th>How it is enforced</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="key">Money is never a float</td>
+              <td><code>rupees_to_paise()</code> raises <code>TypeError</code> on a float argument
+                rather than converting it. A test walks every column in the schema and fails if any
+                <code>_paise</code> column is not an integer type, or if a <code>Float</code>
+                column exists anywhere.</td>
+            </tr>
+            <tr>
+              <td class="key">Everything is reproducible</td>
+              <td>A single <code>RANDOM_SEED</code> drives all synthetic generation. The same seed
+                produces byte-identical data, so an accuracy number from last week is comparable to
+                one from today.</td>
+            </tr>
+            <tr>
+              <td class="key">LLM output is never trusted</td>
+              <td>Pydantic validation, one retry, amount cross-check, and a recorded
+                <code>extraction_method</code> so downstream scoring can weight an LLM result
+                differently from a regex one.</td>
+            </tr>
+            <tr>
+              <td class="key">The LLM is optional</td>
+              <td><code>LLM_MODE</code> defaults to <code>mock</code>. The full test suite passes
+                with no API key and no network.</td>
+            </tr>
+            <tr>
+              <td class="key">Every decision is explainable</td>
+              <td><code>explanation</code> and <code>reason_text</code> are non-nullable columns on
+                <code>match_results</code>, alongside <code>engine_version</code> so decisions from
+                different builds stay comparable.</td>
+            </tr>
+            <tr>
+              <td class="key">The matcher cannot see the answers</td>
+              <td>Ground truth is a file on disk, not a table. A test asserts no scenario or truth
+                column exists on <code>bank_transactions</code>.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Known limitations, stated up front</h3>
+      <div class="measure">
+        <ul class="plain">
+          <li><strong>Synthetic data flatters the matcher.</strong> Generated messiness is messy in
+            the ways I thought to model. Real bank files contain failure modes nobody anticipates,
+            and the honest expectation is that measured accuracy drops on first contact with real
+            data.</li>
+          <li><strong>Scoring weights are hand-tuned, not learned.</strong> Defensible at this data
+            volume and far more explainable, but a gradient-boosted model over the same signals
+            would almost certainly score better once there is enough labelled review history to
+            train on.</li>
+          <li><strong>One currency.</strong> INR only. Multi-currency brings FX gain/loss on the
+            application date, which is a genuine modelling problem, not a column.</li>
+          <li><strong>No real bank formats yet.</strong> CSV upload only; CAMT.053 and MT940 are
+            next steps, not current capability.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ===================================================== 13 -->
+    <section id="roadmap">
+      <h2><span class="n">13</span><span>Roadmap</span></h2>
+      <div class="rule"></div>
+
+      <div class="table-wrap">
+        <table class="data">
+          <thead>
+            <tr><th>Phase</th><th>Scope</th><th>Status</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="key">1</td>
+              <td><strong>Domain model and skeleton.</strong> Eight tables, Alembic migration,
+                integer-paise money module, name and reference normalisation, Docker Compose,
+                health endpoints.</td>
+              <td><span class="pill done">Done</span></td>
+            </tr>
+            <tr>
+              <td class="key">2</td>
+              <td><strong>Synthetic data with ground truth.</strong> 50 customers, 2,000
+                invoices, 800 payments and 435 advice documents for a fictional Indian FMCG
+                distributor, shaped by a YAML scenario mix. Answer key written to a separate
+                file the matcher cannot reach.</td>
+              <td><span class="pill done">Done</span></td>
+            </tr>
+            <tr>
+              <td class="key">3</td>
+              <td><strong>Deterministic matching engine.</strong> The four-strategy cascade,
+                with customer identification by exact, alias, then fuzzy match. Candidates for
+                97.2% of payments in 0.4 seconds, writing nothing.</td>
+              <td><span class="pill done">Done</span></td>
+            </tr>
+            <tr>
+              <td class="key">4</td>
+              <td><strong>LLM remittance extraction.</strong> Few-shot prompt,
+                schema-constrained output, validation with one retry, regex fallback, mock
+                mode. 99.3% of documents yield invoice lines; 99.5% of checkable extractions
+                tie to the credit.</td>
+              <td><span class="pill done">Done</span></td>
+            </tr>
+            <tr>
+              <td class="key">5</td>
+              <td><strong>Confidence scoring.</strong> Weighted signals normalised over
+                available evidence, configurable thresholds, decisions and allocations
+                persisted with the full breakdown. 87.2% auto-applied, suggest-only by
+                default.</td>
+              <td><span class="pill done">Done</span></td>
+            </tr>
+            <tr>
+              <td class="key">6</td>
+              <td><strong>Evaluation.</strong> 81.9% auto-match at 100% precision over 800
+                payments, per-scenario accuracy, and a threshold sweep that found &mdash; and
+                then fixed &mdash; every error in the run.</td>
+              <td><span class="pill done">Done</span></td>
+            </tr>
+            <tr>
+              <td class="key">7</td>
+              <td><strong>API and review UI.</strong> Twelve endpoints, a React review
+                queue built explanation-first, and the alias feedback loop that makes the
+                queue improve the matcher.</td>
+              <td><span class="pill done">Done</span></td>
+            </tr>
+            <tr>
+              <td class="key">8</td>
+              <td><strong>ROI view and documentation.</strong> An editable calculator in
+                the UI, a sensitivity table showing where the system turns net negative, and
+                a README rewritten as a client deployment summary.</td>
+              <td><span class="pill done">Done</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>What is proven so far</h3>
+      <div class="measure">
+        <p>Not claims &mdash; things that were run and observed. All of it is worth being able to
+          demonstrate live.</p>
+      </div>
+
+      <div class="table-wrap">
+        <table class="data">
+          <thead>
+            <tr><th>Check</th><th>Result</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Test suite, in-memory SQLite, no key, no network</td>
+              <td class="key">489 passing</td>
+            </tr>
+            <tr>
+              <td>Migration output diffed against the ORM models &mdash; tables, column types,
+                nullability, indexes</td>
+              <td class="key">no drift</td>
+            </tr>
+            <tr>
+              <td>Migration downgrade to base</td>
+              <td class="key">clean</td>
+            </tr>
+            <tr>
+              <td>Docker Compose: Postgres 16 + API, migration on boot</td>
+              <td class="key">both healthy</td>
+            </tr>
+            <tr>
+              <td>Column types on live Postgres</td>
+              <td class="key">7 bigint paise, 4 jsonb, 1 numeric</td>
+            </tr>
+            <tr>
+              <td>Full dataset generated into Postgres via the CLI</td>
+              <td class="key">50 / 2,000 / 800 / 435</td>
+            </tr>
+            <tr>
+              <td>Scenario mix realised against the configured percentages</td>
+              <td class="key">exact, to the payment</td>
+            </tr>
+            <tr>
+              <td>Same seed generated twice, answer keys diffed</td>
+              <td class="key">byte-identical</td>
+            </tr>
+            <tr>
+              <td>Config digest, SQLite run vs Postgres run</td>
+              <td class="key">787363436b79d3af both</td>
+            </tr>
+            <tr>
+              <td>Generated PDFs re-read with pdfplumber</td>
+              <td class="key">text recovered</td>
+            </tr>
+            <tr>
+              <td>Answer key: every paise of every payment allocated</td>
+              <td class="key">800 / 800 balance</td>
+            </tr>
+            <tr>
+              <td>Matching cascade over all 800 payments</td>
+              <td class="key">778 with candidates, 0.4s</td>
+            </tr>
+            <tr>
+              <td>Search budget exhaustions across the run</td>
+              <td class="key">0</td>
+            </tr>
+            <tr>
+              <td>Matching run repeated: candidate sets diffed</td>
+              <td class="key">identical</td>
+            </tr>
+            <tr>
+              <td>Invariant: no candidate allocates more than arrived</td>
+              <td class="key">holds for all 800</td>
+            </tr>
+            <tr>
+              <td>Invariant: matching writes no database row</td>
+              <td class="key">asserted</td>
+            </tr>
+            <tr>
+              <td>Extraction over all 435 advice documents</td>
+              <td class="key">432 yielded lines, 6s</td>
+            </tr>
+            <tr>
+              <td>Extracted amounts cross-checked against the real credit</td>
+              <td class="key">188 of 189 tie</td>
+            </tr>
+            <tr>
+              <td>Gemini live API: client, model and request shape</td>
+              <td class="key">verified</td>
+            </tr>
+            <tr>
+              <td>Provider outage (real 503): fallback, then reconcile</td>
+              <td class="key">degraded cleanly</td>
+            </tr>
+            <tr>
+              <td>Decisions scored and persisted for all 800 payments</td>
+              <td class="key">698 / 64 / 38</td>
+            </tr>
+            <tr>
+              <td>Cash posted to the ledger, then re-posted</td>
+              <td class="key">&#8377;53.0 cr applied, second run a no-op</td>
+            </tr>
+            <tr>
+              <td>Invoices driven negative by posting</td>
+              <td class="key">0</td>
+            </tr>
+            <tr>
+              <td>Full pipeline scored against the answer key</td>
+              <td class="key">81.9% auto, 100% precision</td>
+            </tr>
+            <tr>
+              <td>Payments auto-applied to the wrong invoice</td>
+              <td class="key">0 of 655</td>
+            </tr>
+            <tr>
+              <td>Threshold sweep, 11 settings</td>
+              <td class="key">cliff found at 0.60</td>
+            </tr>
+            <tr>
+              <td>Three-container stack: Postgres, API, nginx + React</td>
+              <td class="key">all healthy</td>
+            </tr>
+            <tr>
+              <td>Review workflow driven through the live stack</td>
+              <td class="key">approve, double-approve 422, over-apply 422</td>
+            </tr>
+            <tr>
+              <td>Every money value in every API payload</td>
+              <td class="key">integer paise</td>
+            </tr>
+            <tr>
+              <td>ROI calculator, live in the browser</td>
+              <td class="key">recomputes on every edit</td>
+            </tr>
+            <tr>
+              <td>Lint and format</td>
+              <td class="key">ruff clean</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ===================================================== 14 -->
+    <section id="results">
+      <h2><span class="n">14</span><span>Results</span></h2>
+      <div class="rule"></div>
+
+      <div class="measure">
+        <p class="lede">800 payments worth &#8377;61.1 crore, scored against an answer key
+          written at generation time and never loaded into the database the matcher queries.</p>
+      </div>
+
+      <div class="stats">
+        <div class="stat">
+          <span class="v">81.9<span style="font-size:.62em">%</span></span>
+          <span class="k">Auto-match rate &mdash; 655</span>
+        </div>
+        <div class="stat">
+          <span class="v">100<span style="font-size:.62em">%</span></span>
+          <span class="k">Precision &mdash; 0 wrong</span>
+        </div>
+        <div class="stat">
+          <span class="v">13.0<span style="font-size:.62em">%</span></span>
+          <span class="k">Review &mdash; 104</span>
+        </div>
+        <div class="stat">
+          <span class="v">5.1<span style="font-size:.62em">%</span></span>
+          <span class="k">Unapplied &mdash; 41</span>
+        </div>
+      </div>
+      <p class="caption">Overall accuracy 94.2%. Precision by value is also 100% &mdash;
+        &#8377;0 misapplied &mdash; which is the form finance will ask for it in.</p>
+
+      <h3>By scenario, because the average hides the problem</h3>
+
+      <div class="table-wrap">
+        <table class="data">
+          <thead>
+            <tr>
+              <th>Scenario</th><th class="num">n</th><th class="num">Auto</th>
+              <th class="num">Precision</th><th class="num">Accuracy</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td class="key">exact_single</td><td class="num">272</td><td class="num">100%</td>
+                <td class="num">100%</td><td class="num">100.0%</td></tr>
+            <tr><td class="key">bundled_multi</td><td class="num">144</td><td class="num">95%</td>
+                <td class="num">100%</td><td class="num">100.0%</td></tr>
+            <tr><td class="key">short_pay_deduction</td><td class="num">112</td>
+                <td class="num">45%</td><td class="num">100%</td>
+                <td class="num"><strong>67.0%</strong></td></tr>
+            <tr><td class="key">missing_reference</td><td class="num">80</td><td class="num">26%</td>
+                <td class="num">100%</td><td class="num">90.0%</td></tr>
+            <tr><td class="key">partial_payment</td><td class="num">80</td><td class="num">100%</td>
+                <td class="num">100%</td><td class="num">100.0%</td></tr>
+            <tr><td class="key">typo_reference</td><td class="num">64</td><td class="num">100%</td>
+                <td class="num">100%</td><td class="num">100.0%</td></tr>
+            <tr><td class="key">payer_name_variant</td><td class="num">32</td><td class="num">97%</td>
+                <td class="num">100%</td><td class="num">96.9%</td></tr>
+            <tr><td class="key">no_matching_invoice</td><td class="num">16</td><td class="num">0%</td>
+                <td class="num">&mdash;</td><td class="num">100.0%</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="measure">
+        <p><strong>Short-pay is the weak spot</strong>, and the per-scenario table is exactly why
+          it is reported this way: averaged into a headline dominated by 272 easy exact matches, a
+          67% would be invisible. Half of short-pays now go to review rather than being posted,
+          which is a deliberate choice explained below.</p>
+        <p>The other number worth staring at: <code>typo_reference</code> is at 100%. Those are
+          the <code>inv 42</code> / <code>Invoice No. 42</code> / <code>BILL 42</code> payments,
+          and normalisation solves them completely. That is the cheapest win in the whole
+          system.</p>
+      </div>
+
+      <h3>The 19 errors, and what they turned out to be</h3>
+
+      <div class="measure">
+        <p>The first evaluation came back at <strong>87.2% auto-match, 97.28% precision</strong>
+          &mdash; 19 payments auto-applied to the wrong invoices, &#8377;2.65 crore misapplied.
+          Then the breakdown:</p>
+      </div>
+
+      <pre><code>costly errors: 19
+  by scenario : {'short_pay_deduction': 19}
+  by strategy : {'reference_exact': 16, 'remittance_guided': 3}
+
+  RIGHT invoices, wrong amounts: 19
+  wrong invoices entirely      :  0</code></pre>
+
+      <div class="measure">
+        <p>Every single error was the same defect, and a narrow one: a short-pay across several
+          invoices where the engine found the <em>right invoice set</em> and attributed the
+          deduction to the <em>wrong invoice within it</em>. Not one error involved picking the
+          wrong invoices.</p>
+        <p>The matcher's rule is "the smallest invoice that can absorb the gap". That is a
+          reasonable prior and sometimes simply not what happened. When a remittance says "three
+          invoices, &#8377;4,900 withheld" and never says which consignment was damaged, the
+          attribution is a <em>guess</em> &mdash; and a guess posted at 96% confidence is exactly
+          the failure this project exists to avoid.</p>
+      </div>
+
+      <div class="callout">
+        <p><strong>The fix was not to tune the heuristic.</strong> Making the bearer rule match
+          the generator would have scored beautifully and taught the system nothing that survives
+          contact with a real client. It would be fitting to the synthetic data.</p>
+        <p>The fix was to stop pretending the guess is knowledge. A multi-invoice short-pay whose
+          claim-bearing invoice nobody asserted now carries a penalty that drops it into the
+          review queue, where two minutes of an analyst's time settles it. When the advice
+          <em>does</em> name the invoice, the match is asserted and the penalty does not apply.</p>
+        <p>Result: <strong>87.2% at 97.28% &rarr; 81.9% at 100%.</strong> Five points of
+          automation traded for every error in the run.</p>
+      </div>
+
+      <h3>The threshold sweep</h3>
+
+      <div class="measure">
+        <p>A single accuracy number invites the wrong conversation. Every row here is a setting
+          a client could choose; the columns are what they get for it.</p>
+      </div>
+
+      <div class="table-wrap">
+        <table class="data">
+          <thead>
+            <tr>
+              <th class="num">Auto &ge;</th><th class="num">Auto rate</th>
+              <th class="num">Precision</th><th class="num">Errors</th>
+              <th class="num">Review</th><th class="num">Value at risk</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td class="num key">0.50</td><td class="num">94.6%</td><td class="num">97.36%</td>
+                <td class="num">20</td><td class="num">0.2%</td>
+                <td class="num">&#8377;2.89 cr</td></tr>
+            <tr><td class="num key">0.55</td><td class="num">93.8%</td><td class="num">97.47%</td>
+                <td class="num">19</td><td class="num">1.1%</td>
+                <td class="num">&#8377;2.65 cr</td></tr>
+            <tr><td class="num key"><strong>0.60</strong></td>
+                <td class="num"><strong>88.1%</strong></td>
+                <td class="num"><strong>100.00%</strong></td>
+                <td class="num"><strong>0</strong></td><td class="num">6.8%</td>
+                <td class="num">&#8377;0</td></tr>
+            <tr><td class="num key">0.70</td><td class="num">83.0%</td><td class="num">100.00%</td>
+                <td class="num">0</td><td class="num">11.9%</td><td class="num">&#8377;0</td></tr>
+            <tr><td class="num key">0.80</td><td class="num">83.0%</td><td class="num">100.00%</td>
+                <td class="num">0</td><td class="num">11.9%</td><td class="num">&#8377;0</td></tr>
+            <tr><td class="num key"><strong>0.90</strong> &larr; current</td>
+                <td class="num"><strong>81.9%</strong></td>
+                <td class="num"><strong>100.00%</strong></td>
+                <td class="num"><strong>0</strong></td><td class="num">13.0%</td>
+                <td class="num">&#8377;0</td></tr>
+            <tr><td class="num key">0.95</td><td class="num">71.8%</td><td class="num">100.00%</td>
+                <td class="num">0</td><td class="num">23.1%</td><td class="num">&#8377;0</td></tr>
+            <tr><td class="num key">1.00</td><td class="num">46.0%</td><td class="num">100.00%</td>
+                <td class="num">0</td><td class="num">48.9%</td><td class="num">&#8377;0</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout caution">
+        <p>There is a sharp cliff at <strong>0.60</strong>: below it precision drops to ~97%, at
+          or above it there are no errors at all. So the sweep says 0.60 buys 6.2 points more
+          automation for free.</p>
+        <p><strong>I would still deploy at 0.90.</strong> The cliff is measured on one synthetic
+          dataset, and sitting directly on it leaves no margin for failure modes this data does
+          not contain. Six points of automation is a cheap price for that margin on a first
+          deployment.</p>
+        <p>That disagreement between what the data says and what deployment judgement says is not
+          a flaw in the analysis &mdash; it is the analysis doing its job. The sweep exists so the
+          decision is a conversation with a client, not a number chosen alone.</p>
+      </div>
+
+      <h3>Where the remaining work is</h3>
+
+      <div class="table-wrap">
+        <table class="data">
+          <thead>
+            <tr><th>Bucket</th><th class="num">n</th><th>What it means</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="key">Wrong, auto-applied</td><td class="num key">0</td>
+              <td>The only costly failure mode. None in this run.</td>
+            </tr>
+            <tr>
+              <td class="key">Correct, in review</td><td class="num key">83</td>
+              <td><strong>Head-room.</strong> Work a human will do that the engine already got
+                right. Most of it is the short-pay bearer question; resolving attribution would
+                convert it directly into automation.</td>
+            </tr>
+            <tr>
+              <td class="key">Wrong, in review</td><td class="num key">21</td>
+              <td>The queue doing its job. A human sees these before any money moves.</td>
+            </tr>
+            <tr>
+              <td class="key">Missed entirely</td><td class="num key">25</td>
+              <td>Left as unapplied cash. Safe, but it is cash sitting on a customer account
+                inflating their apparent balance.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>What each signal is actually worth</h3>
+
+      <div class="measure">
+        <p>Zero one signal's weight, redistribute it proportionally across the rest, re-score,
+          re-judge. The drop is that signal's contribution &mdash; measured rather than
+          asserted, which is the only way to defend a weighting in a room.</p>
+      </div>
+
+      <div class="table-wrap">
+        <table class="data">
+          <thead>
+            <tr>
+              <th>Signal removed</th><th class="num">Auto rate</th>
+              <th class="num">Precision</th><th class="num">&Delta; auto</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td class="key">(baseline)</td><td class="num key">81.9%</td>
+                <td class="num">100.00%</td><td class="num">&mdash;</td></tr>
+            <tr><td class="key">customer_identity</td><td class="num">75.6%</td>
+                <td class="num">100.00%</td><td class="num key">&minus;6.2</td></tr>
+            <tr><td class="key">date_proximity</td><td class="num">75.6%</td>
+                <td class="num">100.00%</td><td class="num key">&minus;6.2</td></tr>
+            <tr><td class="key">reference_match</td><td class="num">77.4%</td>
+                <td class="num">100.00%</td><td class="num key">&minus;4.5</td></tr>
+            <tr><td class="key">amount_match</td><td class="num">81.9%</td>
+                <td class="num">100.00%</td><td class="num key">0.0</td></tr>
+            <tr><td class="key">remittance_agreement</td><td class="num">82.9%</td>
+                <td class="num">100.00%</td><td class="num key">+1.0</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout caution">
+        <p><strong>Precision stays at 100% in every variant.</strong> That is the finding, and
+          it is a humbling one: <em>none of the weights are currently load-bearing for
+          correctness.</em> They tune how much gets automated, not whether it is right.</p>
+        <p>Safety is coming from somewhere else entirely &mdash; the structural refusals. The
+          ambiguity margin that declines to pick between two customers scoring alike, the
+          penalty that sends a guessed claim-bearer to review, the cascade's refusal to match
+          when the payer name and the reference disagree. Those are what produce 100%
+          precision. The weighted sum decides volume.</p>
+        <p>That is worth knowing before anyone spends a week tuning weights to buy accuracy
+          they will not get.</p>
+      </div>
+
+      <div class="measure">
+        <h4>Two readings worth taking care over</h4>
+        <ul class="plain">
+          <li><strong><code>amount_match</code> contributes nothing measurable</strong> despite
+            carrying 0.26 of the weight. The reason is structural: the cascade only produces a
+            candidate when the amounts already work, so this signal is very nearly constant at
+            1.0 &mdash; and a signal that never varies carries no information. It is a
+            candidate for re-weighting, though not on the evidence of one dataset.</li>
+          <li><strong>Removing <code>remittance_agreement</code> slightly <em>helps</em></strong>
+            (+1.0 point). Advice that is present but does not support the match scores zero and
+            drags the confidence down; removing the signal removes that drag. Arguably correct
+            behaviour being measured as a cost &mdash; contradicting advice <em>should</em>
+            lower confidence &mdash; but worth being honest that it costs automation.</li>
+        </ul>
+        <p>One caveat on method: because removing a signal that scored 1.0 and redistributing
+          its weight lowers any score that was not already perfect, this ablation measures how
+          much each signal <em>props up the confidence level</em>, not how well it separates
+          right from wrong. With precision pinned at 100% there is no separation left to
+          measure, which is itself the answer.</p>
+      </div>
+
+      <h3>Honest limitations of this result</h3>
+
+      <div class="measure">
+        <ul class="plain">
+          <li><strong>100% precision is a property of this dataset, not a promise.</strong> It
+            means the engine makes no mistakes on messiness I thought to model. Real bank files
+            contain failure modes nobody anticipates, and the first number to move on contact
+            with real data is this one.</li>
+          <li><strong>Deduction reason accuracy is 24%</strong> (18 of 75). Most claims stay
+            <code>unknown</code> because only 196 of 800 payments have advice linked at all. A
+            claim without a category cannot be routed, so this is the clearest gap with a known
+            cause.</li>
+          <li><strong>Amount-only matches never auto-apply</strong> &mdash; all 43 were correct
+            here, and all 43 went to review. That is deliberate: these amounts are distinctive
+            because they are synthetic. On a real book with round negotiated prices they would
+            collide, and the caution would be earning its keep.</li>
+          <li><strong>One payment per invoice.</strong> The generator never splits an invoice
+            across two payments, so the two-instalment case is untested end to end.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ===================================================== 15 -->
+    <section id="roi">
+      <h2><span class="n">15</span><span>What it is worth</span></h2>
+      <div class="rule"></div>
+
+      <div class="measure">
+        <p class="lede">Hours and rupees, from two numbers the client supplies and one the
+          system measures. Nothing here is researched, benchmarked or borrowed from a vendor
+          deck.</p>
+      </div>
+
+      <div class="stats">
+        <div class="stat">
+          <span class="v">47.1</span>
+          <span class="k">Hours saved / month</span>
+        </div>
+        <div class="stat">
+          <span class="v">88<span style="font-size:.62em">%</span></span>
+          <span class="k">Of the manual effort</span>
+        </div>
+        <div class="stat">
+          <span class="v">&#8377;28,260</span>
+          <span class="k">Net saving / month</span>
+        </div>
+        <div class="stat">
+          <span class="v">&#8377;3.4<span style="font-size:.62em">L</span></span>
+          <span class="k">Net saving / year</span>
+        </div>
+      </div>
+      <p class="caption">At 800 payments a month, 4 minutes to match by hand, 2 minutes to
+        clear a review item, &#8377;600 an analyst hour. Every one of those is an
+        <strong>assumption, not a benchmark</strong> &mdash; the ROI tab in the UI makes all
+        five editable and the answer moves with them.</p>
+
+      <h3>Three things the model refuses to flatter</h3>
+
+      <div class="table-wrap">
+        <table class="data">
+          <thead>
+            <tr><th>Temptation</th><th>What the model does instead</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="key">Count every non-auto<br>payment as saved</td>
+              <td>A review item is <em>not</em> free. It still costs an analyst's attention
+                &mdash; less than matching from scratch, because the suggestion and its
+                reasoning are already on screen, but not nothing.</td>
+            </tr>
+            <tr>
+              <td class="key">Count unapplied cash<br>as automation</td>
+              <td>The engine has not saved that work; it declined to guess at it. Someone
+                still has to investigate every one, at full manual cost.</td>
+            </tr>
+            <tr>
+              <td class="key">Ignore the cost<br>of being wrong</td>
+              <td>The expected cost of wrong auto-matches is <em>subtracted</em>. At the
+                measured precision that term is zero &mdash; and it stays visible anyway,
+                because it is the term that would dominate if precision slipped.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>The cost asymmetry, in rupees</h3>
+
+      <div class="measure">
+        <p>This is the single most useful table in the project. It is the Phase 6 argument
+          &mdash; that precision is a constraint and automation is optimised underneath it
+          &mdash; translated out of percentages and into money a controller actually
+          budgets.</p>
+      </div>
+
+      <div class="table-wrap">
+        <table class="data">
+          <thead>
+            <tr>
+              <th class="num">Precision</th><th class="num">Gross saving</th>
+              <th class="num">Expected error cost</th><th class="num">Net</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="num key"><strong>100%</strong></td>
+              <td class="num">&#8377;28,260</td><td class="num">&#8377;0</td>
+              <td class="num key"><strong>&#8377;28,260</strong></td>
+            </tr>
+            <tr>
+              <td class="num key">99%</td><td class="num">&#8377;28,260</td>
+              <td class="num">&#8377;11,790</td><td class="num key">&#8377;16,470</td>
+            </tr>
+            <tr>
+              <td class="num key">97%</td><td class="num">&#8377;28,260</td>
+              <td class="num">&#8377;35,370</td>
+              <td class="num key" style="color:var(--crit)"><strong>&minus;&#8377;7,110</strong></td>
+            </tr>
+            <tr>
+              <td class="num key">95%</td><td class="num">&#8377;28,260</td>
+              <td class="num">&#8377;58,950</td>
+              <td class="num key" style="color:var(--crit)">&minus;&#8377;30,690</td>
+            </tr>
+            <tr>
+              <td class="num key">90%</td><td class="num">&#8377;28,260</td>
+              <td class="num">&#8377;1,17,900</td>
+              <td class="num key" style="color:var(--crit)">&minus;&#8377;89,640</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout caution">
+        <p><strong>The gross saving does not move.</strong> The automation still happens at
+          every precision level &mdash; the same 82% of payments clear without a human. What
+          grows is the error term, and by 97% it has swallowed the entire benefit.</p>
+        <p><strong>At 97% precision this system is net negative.</strong> It costs more than
+          it saves. And 97% is not a bad number in most of machine learning &mdash; it is
+          what the first evaluation produced, before the claim-bearer fix.</p>
+        <p>This is why Phase 6 traded five points of auto-match rate for zero errors without
+          hesitating, and why the deployment threshold stays at 0.90 rather than the 0.60 the
+          sweep technically permits. The asymmetry is not a rhetorical point. It is the
+          budget.</p>
+      </div>
+
+      <div class="measure">
+        <h3>One deliberate inconsistency</h3>
+        <p>Rounding happens here, and nowhere else in the codebase. Every other number is an
+          exact integer count of paise, enforced by tests that walk the whole schema and
+          every API payload.</p>
+        <p>These are projections built from estimates, not ledger entries. The exactness rule
+          exists to protect money that actually moved; applying it to a forecast would be
+          precision theatre, and pretending a guess about analyst minutes is accurate to the
+          paise would be its own kind of dishonesty.</p>
+      </div>
+    </section>
+
+    <!-- ===================================================== 16 -->
+    <section id="qa">
+      <h2><span class="n">16</span><span>Interview Q&amp;A</span></h2>
+      <div class="rule"></div>
+
+      <div class="measure">
+        <p>Questions this project invites, with the answer worth having ready.</p>
+      </div>
+
+      <div class="qa">
+
+        <details>
+          <summary>Why rules rather than a machine-learning model?</summary>
+          <div class="answer">
+            <p>Three reasons, in order of weight. First, there is no labelled training data on day
+              one of a deployment &mdash; a rules engine works from the first payment, and the
+              review queue it generates <em>is</em> the labelling process. Second, finance needs to
+              audit decisions; &ldquo;the model scored 0.87&rdquo; does not survive a conversation
+              with a controller, whereas &ldquo;the invoice reference matched exactly and the
+              amount tied to the paise&rdquo; does. Third, thresholds are directly tunable &mdash;
+              a client who wants fewer errors moves one number and sees the trade-off immediately.</p>
+            <p>The right end state is a hybrid: keep the deterministic signals as features, and
+              learn the weights with something like LightGBM once there is enough review history.
+              The architecture is already shaped for that &mdash; the signal breakdown is stored on
+              every decision, so the training set builds itself.</p>
+          </div>
+        </details>
+
+        <details>
+          <summary>What auto-match rate are you targeting, and why not 100%?</summary>
+          <div class="answer">
+            <p>100% is the wrong target because it requires auto-applying cases the system is not
+              confident about, and those are exactly the ones it gets wrong. The objective is the
+              highest automation rate achievable while holding precision above the bar the client
+              sets &mdash; typically very high, because a mis-applied payment costs far more to
+              unwind than a reviewed one costs to clear.</p>
+            <p>So the deliverable is not a number, it is a curve. The threshold sweep shows what
+              each cutoff buys in automation and costs in errors, and the client picks their point
+              on it. A conservative controller and an aggressive shared-services lead will
+              legitimately choose differently.</p>
+          </div>
+        </details>
+
+        <details>
+          <summary>How do you stop the LLM inventing an amount?</summary>
+          <div class="answer">
+            <p>Four layers, and the last one is the one that actually matters. The output must
+              validate against a strict Pydantic schema. Invalid output is retried once with the
+              error fed back. A regex extractor covers the common patterns if the LLM is
+              unavailable or keeps failing.</p>
+            <p>And then the arithmetic check: extracted per-invoice amounts have to reconcile
+              against the bank credit that actually arrived. A hallucinated figure almost never
+              balances. If the numbers do not tie, the extraction is treated as a weak hint rather
+              than a fact, and the payment goes to review instead of being auto-applied. The LLM
+              gets to <em>propose</em> structure; it never gets to decide.</p>
+          </div>
+        </details>
+
+        <details>
+          <summary>Why integer paise instead of Decimal?</summary>
+          <div class="answer">
+            <p>Both are exact, so this is a performance and safety argument rather than a
+              correctness one. Subset-sum evaluates many thousands of candidate combinations per
+              payment, and integer addition is substantially faster than Decimal addition in that
+              inner loop.</p>
+            <p>The safety half is that an integer cannot silently lose precision on the way through
+              JSON, a CSV parse, or a careless division, whereas a Decimal can quietly become a
+              float at any of those boundaries. Decimal is used in exactly one place &mdash;
+              parsing a rupee string at the edge &mdash; and the result is immediately converted to
+              paise. A test fails the build if any <code>_paise</code> column is not an integer
+              type.</p>
+          </div>
+        </details>
+
+        <details>
+          <summary>Subset-sum is NP-complete. How does this not blow up?</summary>
+          <div class="answer">
+            <p>By never running it on a large set. Three prunes, applied before the search starts.
+              Restricting candidates to the identified customer's open items cuts the pool from
+              every invoice in the business to typically 10&ndash;60. A date window around the
+              payment trims it further &mdash; an invoice from fourteen months ago is not what this
+              payment settles. And capping the combination size at <em>k</em> bounds the work at
+              C(n, k) instead of 2&#8319;.</p>
+            <p>Concretely: 40 candidate invoices with k&nbsp;=&nbsp;4 is about 102,000 combinations,
+              a few milliseconds. The unpruned power set is 1.1&nbsp;&times;&nbsp;10&#185;&#178;.
+              The cost is that a genuine seven-invoice bundle will not be found &mdash; and that is
+              the correct failure, because it goes to review rather than producing a confident
+              wrong answer.</p>
+          </div>
+        </details>
+
+        <details>
+          <summary>Two different invoice sets sum to exactly the payment amount. Now what?</summary>
+          <div class="answer">
+            <p>Ambiguity is a signal, not an obstacle. When more than one candidate set ties on
+              amount, confidence drops and the item goes to review with <em>both</em> options
+              presented and the reason stated &mdash; &ldquo;two combinations match this amount
+              exactly; no reference was supplied to distinguish them.&rdquo;</p>
+            <p>Picking one arbitrarily would be the worst available behaviour: a coin flip, posted
+              with high apparent confidence, with nothing to show the reviewer later. The scoring
+              model is designed so that ambiguity actively suppresses confidence rather than being
+              ignored.</p>
+          </div>
+        </details>
+
+        <details>
+          <summary>What about a customer who never sends remittance advice at all?</summary>
+          <div class="answer">
+            <p>Common, and the system degrades rather than fails. Without advice it falls back to
+              amount-based strategies against that customer's open items, and precision depends on
+              how distinctive their invoice amounts are. A customer with four open invoices of very
+              different values is still matched confidently; one with twenty near-identical monthly
+              invoices mostly goes to review, which is the honest outcome.</p>
+            <p>The deployment answer is that this is a measurable, nameable gap: per-customer
+              auto-match rates make it obvious which relationships would benefit from asking for
+              structured advice. That conversation &mdash; using the data to change the client's
+              process, not just to automate around it &mdash; is a good part of what a forward
+              deployed role is for.</p>
+          </div>
+        </details>
+
+        <details>
+          <summary>How do you know your accuracy numbers are real and not self-graded?</summary>
+          <div class="answer">
+            <p>The ground truth is generated alongside the synthetic data and written to a separate
+              file on disk. It is never loaded into the database the matcher queries, and a test
+              asserts that no scenario, truth or expected column exists on
+              <code>bank_transactions</code> &mdash; so the leak cannot be reintroduced by accident
+              later.</p>
+            <p>The evaluation script is the only component that reads both the ground truth and the
+              pipeline output, and it runs after matching is complete. The weakness I would flag
+              unprompted is a different one: the data is synthetic, so it is messy in the ways I
+              thought to model. Real bank files will contain failure modes I did not anticipate,
+              and the number will drop.</p>
+          </div>
+        </details>
+
+        <details>
+          <summary>How would this integrate with a real ERP?</summary>
+          <div class="answer">
+            <p>Three touch points. Inbound master data &mdash; customers and open items &mdash;
+              arrives by scheduled extract or API; the schema maps directly onto the open-items
+              view that SAP, Oracle or NetSuite already expose. Inbound bank data arrives as
+              CAMT.053 or MT940 from the bank rather than CSV; that is a parser swap behind the
+              same interface, not a redesign.</p>
+            <p>Outbound is the one that needs care: posting the cash application back as a journal
+              entry has to be idempotent and reversible, which is what <code>statement_ref</code>
+              uniqueness and the audit log are already for. In practice the first deployment runs
+              in suggest-only mode, posting nothing, until the client has watched the precision
+              number for a few weeks.</p>
+          </div>
+        </details>
+
+        <details>
+          <summary>What breaks first at ten times the volume?</summary>
+          <div class="answer">
+            <p>Not the database &mdash; a few million rows with these indexes is unremarkable. The
+              first pressure point is subset-sum on customers with large open-item counts, because
+              C(n, k) grows fast in n; the mitigations are a tighter date window, a dynamic
+              programming formulation over the paise amounts, or dropping to review earlier for
+              high-n customers.</p>
+            <p>The second is LLM throughput and cost on remittance extraction, which is why
+              extraction is batched, cached on the remittance row rather than recomputed, and
+              skipped entirely when the regex extractor already produces a complete, balancing
+              result.</p>
+          </div>
+        </details>
+
+        <details>
+          <summary>Why is this a forward deployed engineering problem rather than a data science one?</summary>
+          <div class="answer">
+            <p>Because almost none of the difficulty is in the algorithm. It is in learning that
+              this particular distributor's largest customer pays by consolidated weekly transfer
+              with advice in a spreadsheet attachment; that their deduction codes do not match the
+              master list; that the AR team will not trust automation until they have watched it
+              agree with them for a month.</p>
+            <p>The engineering that matters is the part that makes those discoveries cheap: a
+              configurable scenario mix, tunable thresholds, an explanation on every decision, and
+              an evaluation harness that can answer &ldquo;did that change help?&rdquo; in one
+              command. The model is the easy half.</p>
+          </div>
+        </details>
+
+      </div>
+    </section>
+
+    <footer>
+      CashMatch &middot; engineering brief &middot; all 8 phases complete &middot; last updated 7 October 2026
+    </footer>
+
+  </main>
+</div>
+
+<script>
+  // Highlight the index entry for whichever section is currently in view.
+  (function () {
+    var links = Array.prototype.slice.call(document.querySelectorAll('.rail a'));
+    if (!links.length || !('IntersectionObserver' in window)) return;
+
+    var byId = {};
+    links.forEach(function (link) { byId[link.getAttribute('href').slice(1)] = link; });
+
+    var visible = new Set();
+
+    var observer = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) visible.add(entry.target.id);
+        else visible.delete(entry.target.id);
+      });
+
+      var first = null;
+      Object.keys(byId).forEach(function (id) {
+        if (first === null && visible.has(id)) first = id;
+      });
+
+      links.forEach(function (link) { link.classList.remove('is-active'); });
+      if (first && byId[first]) byId[first].classList.add('is-active');
+    }, { rootMargin: '-10% 0px -70% 0px' });
+
+    Object.keys(byId).forEach(function (id) {
+      var section = document.getElementById(id);
+      if (section) observer.observe(section);
+    });
+  })();
+</script>

@@ -1,0 +1,63 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cashmatch"
+version = "0.1.0"
+description = "AI cash application agent: match B2B bank payments to open invoices."
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "python-multipart>=0.0.20",
+    "sqlalchemy>=2.0.36",
+    "alembic>=1.14",
+    "psycopg[binary]>=3.2",
+    "pydantic>=2.9",
+    "pydantic-settings>=2.6",
+    "typer>=0.15",
+    # Phases 2-4. Declared now so one install covers the whole project.
+    "pandas>=2.2",
+    "rapidfuzz>=3.10",
+    "faker>=33.0",
+    "pdfplumber>=0.11",
+    "pyyaml>=6.0",
+    "reportlab>=4.2",
+    "google-genai>=0.8",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3",
+    "pytest-cov>=6.0",
+    "httpx>=0.28",
+    "ruff>=0.8",
+]
+
+[project.scripts]
+cashmatch = "cashmatch.cli:app"
+
+[tool.setuptools.packages.find]
+include = ["cashmatch*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --strict-markers"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.ruff.lint.isort]
+# `alembic/` is a local directory, which makes ruff mistake the installed
+# Alembic package for first-party code.
+known-third-party = ["alembic"]
+
+[tool.ruff.lint.flake8-bugbear]
+# `Depends(...)` in a default argument is the documented FastAPI idiom, not
+# the mutable-default bug B008 is meant to catch.
+extend-immutable-calls = ["fastapi.Depends", "fastapi.Query", "fastapi.Path", "fastapi.Body"]
