@@ -73,9 +73,10 @@ services:
       - cashmatch_data:/data
     expose:
       - "8000"
-    command: >
-      sh -c "alembic upgrade head &&
-             uvicorn cashmatch.api.app:app --host 0.0.0.0 --port 8000"
+    # No command override. The image's entrypoint runs migrations, seeds an
+    # empty database and then serves -- overriding it here silently skipped
+    # the seeding on the first deploy and left a live site with no data in
+    # it, which is a confusing failure because nothing errored.
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import urllib.request;urllib.request.urlopen('http://localhost:8000/health')\""]
       interval: 15s
@@ -103,25 +104,17 @@ cd /opt/cashmatch
 docker compose pull
 docker compose up -d
 
-echo "=== seed the demo dataset ==="
-# Only on an empty database. `generate` refuses to run against existing data
-# without --reset, so a restart never silently wipes a populated instance.
-for attempt in $(seq 1 30); do
-  if docker compose exec -T api python -m cashmatch.cli health >/dev/null 2>&1; then
+echo "=== waiting for the application to report healthy ==="
+# Migrations and seeding happen inside the container, in entrypoint.sh.
+# Nothing to orchestrate from out here beyond confirming it came up.
+for attempt in $(seq 1 40); do
+  if curl -fsS http://localhost/ >/dev/null 2>&1; then
+    echo "application is serving"
     break
   fi
-  echo "waiting for the database ($attempt/30)"
-  sleep 10
+  echo "waiting ($attempt/40)"
+  sleep 15
 done
-
-if docker compose exec -T api python -m cashmatch.cli generate >/dev/null 2>&1; then
-  docker compose exec -T api python -m cashmatch.cli extract
-  docker compose exec -T api python -m cashmatch.cli apply
-  docker compose exec -T api python -m cashmatch.cli evaluate --no-markdown || true
-  echo "demo dataset seeded"
-else
-  echo "database already populated, leaving it alone"
-fi
 
 echo "=== refresh unit ==="
 # `systemctl start cashmatch-refresh` pulls the newest images and restarts.

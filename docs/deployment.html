@@ -1,0 +1,1236 @@
+<title>CashMatch — Deployment Record</title>
+
+<style>
+  /* ---------- tokens: light is the base, both themes redefine only these ---------- */
+  :root {
+    --ground: #f1f4f4;
+    --surface: #ffffff;
+    --sunk: #e7eded;
+    --ink: #0e1a1c;
+    --ink-soft: #44585b;
+    --ink-faint: #74888b;
+    --rule: #d2dbdb;
+    --rule-strong: #b4c3c3;
+    --accent: #0c5a60;
+    --accent-ink: #0c5a60;
+    --accent-wash: #dcebec;
+    --good: #1c6b45;
+    --good-wash: #dceade;
+    --warn: #8c5e0b;
+    --warn-wash: #f3e7cd;
+    --crit: #9b3225;
+    --crit-wash: #f5dfdb;
+    --shadow: 0 1px 2px rgba(14, 26, 28, .06), 0 8px 24px -16px rgba(14, 26, 28, .3);
+
+    --font-display: ui-monospace, "SF Mono", "Cascadia Mono", "Segoe UI Mono",
+      "Roboto Mono", Menlo, Consolas, monospace;
+    --font-body: Charter, "Bitstream Charter", "Iowan Old Style", "Palatino Linotype",
+      Georgia, "Times New Roman", serif;
+    --font-ui: "Segoe UI", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #0a1214;
+      --surface: #101b1d;
+      --sunk: #162427;
+      --ink: #dfe9e8;
+      --ink-soft: #9bb0b1;
+      --ink-faint: #6f8588;
+      --rule: #223336;
+      --rule-strong: #32484c;
+      --accent: #58c2c7;
+      --accent-ink: #7fd4d8;
+      --accent-wash: #0f3236;
+      --good: #58b887;
+      --good-wash: #10301f;
+      --warn: #d4a44f;
+      --warn-wash: #332710;
+      --crit: #e58876;
+      --crit-wash: #3a1a15;
+      --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 24px -16px rgba(0, 0, 0, .8);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground: #0a1214;
+    --surface: #101b1d;
+    --sunk: #162427;
+    --ink: #dfe9e8;
+    --ink-soft: #9bb0b1;
+    --ink-faint: #6f8588;
+    --rule: #223336;
+    --rule-strong: #32484c;
+    --accent: #58c2c7;
+    --accent-ink: #7fd4d8;
+    --accent-wash: #0f3236;
+    --good: #58b887;
+    --good-wash: #10301f;
+    --warn: #d4a44f;
+    --warn-wash: #332710;
+    --crit: #e58876;
+    --crit-wash: #3a1a15;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 24px -16px rgba(0, 0, 0, .8);
+  }
+
+  /* ---------- base ---------- */
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 17px;
+    line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page {
+    max-width: 1240px;
+    margin: 0 auto;
+    padding: 0 24px 120px;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0 56px;
+  }
+
+  @media (min-width: 1080px) {
+    .page { grid-template-columns: 196px minmax(0, 1fr); }
+  }
+
+  /* ---------- index rail ---------- */
+  .rail { display: none; }
+
+  @media (min-width: 1080px) {
+    .rail {
+      display: block;
+      grid-column: 1;
+      position: sticky;
+      top: 0;
+      align-self: start;
+      max-height: 100vh;
+      overflow-y: auto;
+      padding: 40px 0;
+      font-family: var(--font-display);
+      font-size: 11.5px;
+      line-height: 1.5;
+    }
+  }
+
+  .rail-label {
+    text-transform: uppercase;
+    letter-spacing: .16em;
+    color: var(--ink-faint);
+    margin-bottom: 14px;
+  }
+
+  .rail ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+
+  .rail a {
+    display: grid;
+    grid-template-columns: 22px 1fr;
+    gap: 6px;
+    padding: 5px 8px 5px 0;
+    color: var(--ink-soft);
+    text-decoration: none;
+    border-left: 2px solid transparent;
+    padding-left: 10px;
+    transition: color .15s, border-color .15s;
+  }
+
+  .rail a:hover { color: var(--accent-ink); }
+  .rail a .n { color: var(--ink-faint); }
+  .rail a.is-active { color: var(--accent-ink); border-left-color: var(--accent); }
+  .rail a.is-active .n { color: var(--accent-ink); }
+
+  /* ---------- main column ---------- */
+  main { grid-column: 1; min-width: 0; }
+  @media (min-width: 1080px) { main { grid-column: 2; } }
+
+  .measure { max-width: 68ch; }
+
+  /* ---------- masthead ---------- */
+  .masthead { padding: 56px 0 40px; border-bottom: 2px solid var(--ink); }
+
+  .eyebrow {
+    font-family: var(--font-display);
+    font-size: 11.5px;
+    text-transform: uppercase;
+    letter-spacing: .2em;
+    color: var(--ink-faint);
+    margin: 0 0 18px;
+  }
+
+  h1 {
+    font-family: var(--font-display);
+    font-size: clamp(2.1rem, 5.5vw, 3.1rem);
+    font-weight: 600;
+    letter-spacing: -.02em;
+    line-height: 1.05;
+    margin: 0 0 6px;
+    text-wrap: balance;
+  }
+
+  .subtitle {
+    font-size: clamp(1.05rem, 2.4vw, 1.3rem);
+    color: var(--ink-soft);
+    margin: 0 0 28px;
+    max-width: 56ch;
+    text-wrap: balance;
+  }
+
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 10px;
+    font-family: var(--font-display);
+    font-size: 11.5px;
+    letter-spacing: .04em;
+  }
+
+  .chip {
+    border: 1px solid var(--rule-strong);
+    border-radius: 2px;
+    padding: 4px 9px;
+    color: var(--ink-soft);
+    background: var(--surface);
+  }
+
+  .chip.live { border-color: var(--good); color: var(--good); background: var(--good-wash); }
+
+  /* ---------- sections ---------- */
+  section { padding-top: 64px; scroll-margin-top: 24px; }
+
+  h2 {
+    font-family: var(--font-display);
+    font-size: 1.02rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .13em;
+    margin: 0 0 4px;
+    color: var(--ink);
+    display: grid;
+    grid-template-columns: 2.6em 1fr;
+    gap: 4px;
+    align-items: baseline;
+  }
+
+  h2 .n { color: var(--accent-ink); font-weight: 400; }
+
+  .rule {
+    height: 1px;
+    background: var(--rule);
+    margin: 14px 0 26px;
+  }
+
+  h3 {
+    font-family: var(--font-ui);
+    font-size: 1.04rem;
+    font-weight: 650;
+    letter-spacing: -.005em;
+    margin: 34px 0 8px;
+    color: var(--ink);
+  }
+
+  h4 {
+    font-family: var(--font-display);
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .11em;
+    color: var(--ink-faint);
+    margin: 26px 0 8px;
+  }
+
+  p { margin: 0 0 16px; }
+  .measure > p:last-child { margin-bottom: 0; }
+
+  a { color: var(--accent-ink); }
+
+  strong { font-weight: 650; }
+
+  code {
+    font-family: var(--font-display);
+    font-size: .86em;
+    background: var(--sunk);
+    border-radius: 2px;
+    padding: 1px 5px;
+    color: var(--ink);
+  }
+
+  .lede {
+    font-size: 1.12rem;
+    color: var(--ink-soft);
+    max-width: 62ch;
+  }
+
+  ul.plain { margin: 0 0 16px; padding-left: 1.15em; }
+  ul.plain li { margin-bottom: 7px; }
+
+  /* ---------- the ledger hero ---------- */
+  .ledger {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    box-shadow: var(--shadow);
+    margin: 30px 0 8px;
+    overflow: hidden;
+  }
+
+  .ledger-head {
+    font-family: var(--font-display);
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: .16em;
+    color: var(--ink-faint);
+    padding: 11px 18px;
+    border-bottom: 1px solid var(--rule);
+    background: var(--sunk);
+  }
+
+  .ledger-body { padding: 16px 18px; overflow-x: auto; }
+
+  .ledger table {
+    width: 100%;
+    min-width: 560px;
+    border-collapse: collapse;
+    font-family: var(--font-display);
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .ledger td { padding: 5px 0; vertical-align: baseline; }
+  .ledger td.num { text-align: right; padding-left: 20px; white-space: nowrap; }
+  .ledger .dim { color: var(--ink-faint); }
+  .ledger .ded { color: var(--crit); }
+  .ledger tr.total td { border-top: 1px solid var(--ink); padding-top: 9px; font-weight: 600; }
+  .ledger .balanced { color: var(--good); }
+
+  .caption {
+    font-family: var(--font-ui);
+    font-size: 13.5px;
+    line-height: 1.5;
+    color: var(--ink-faint);
+    margin: 10px 0 0;
+    max-width: 62ch;
+  }
+
+  /* ---------- callout ---------- */
+  .callout {
+    border-left: 3px solid var(--accent);
+    background: var(--accent-wash);
+    padding: 16px 20px;
+    margin: 26px 0;
+    border-radius: 0 3px 3px 0;
+  }
+
+  .callout p { margin: 0; }
+  .callout p + p { margin-top: 10px; }
+
+  .callout.caution { border-left-color: var(--crit); background: var(--crit-wash); }
+
+  /* ---------- tables ---------- */
+  .table-wrap {
+    overflow-x: auto;
+    margin: 20px 0 8px;
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    background: var(--surface);
+  }
+
+  table.data {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: var(--font-ui);
+    font-size: 14px;
+    line-height: 1.45;
+  }
+
+  table.data th {
+    text-align: left;
+    font-family: var(--font-display);
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    font-weight: 600;
+    color: var(--ink-faint);
+    background: var(--sunk);
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--rule);
+    white-space: nowrap;
+  }
+
+  table.data td {
+    padding: 11px 14px;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: top;
+  }
+
+  table.data tr:last-child td { border-bottom: none; }
+  table.data td.key { font-family: var(--font-display); font-size: 12.5px; white-space: nowrap; }
+  table.data td.num { font-variant-numeric: tabular-nums; text-align: right; }
+
+  /* ---------- status pills ---------- */
+  .pill {
+    display: inline-block;
+    font-family: var(--font-display);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    padding: 3px 8px;
+    border-radius: 2px;
+    white-space: nowrap;
+    border: 1px solid transparent;
+  }
+
+  .pill.done { background: var(--good-wash); color: var(--good); border-color: var(--good); }
+  .pill.next { background: var(--warn-wash); color: var(--warn); border-color: var(--warn); }
+  .pill.todo { background: transparent; color: var(--ink-faint); border-color: var(--rule-strong); }
+
+  /* ---------- figures ---------- */
+  figure {
+    margin: 28px 0 8px;
+    padding: 22px 20px 16px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    overflow-x: auto;
+  }
+
+  figure svg {
+    display: block;
+    width: 100%;
+    min-width: 640px;
+    max-width: 100%;
+    height: auto;
+    color: var(--ink);
+  }
+
+  figcaption {
+    font-family: var(--font-ui);
+    font-size: 13.5px;
+    line-height: 1.5;
+    color: var(--ink-faint);
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px solid var(--rule);
+    max-width: 70ch;
+  }
+
+  .svg-box { fill: var(--surface); stroke: var(--rule-strong); }
+  .svg-box-key { fill: var(--accent-wash); stroke: var(--accent); }
+  .svg-title { font-family: var(--font-display); font-size: 12px; font-weight: 600; fill: var(--ink); }
+  .svg-sub { font-family: var(--font-display); font-size: 10px; fill: var(--ink-faint); }
+  .svg-edge { stroke: var(--ink-soft); fill: none; stroke-width: 1.3; }
+  .svg-edge-soft { stroke: var(--ink-faint); fill: none; stroke-width: 1.1; stroke-dasharray: 4 3; }
+  .svg-edge-key { stroke: var(--accent); fill: none; stroke-width: 1.8; }
+  .svg-lab { font-family: var(--font-display); font-size: 9.5px; fill: var(--ink-faint); }
+  .svg-lab-key { font-family: var(--font-display); font-size: 9.5px; fill: var(--accent-ink); }
+
+  /* ---------- q&a ---------- */
+  .qa { display: grid; gap: 0; margin-top: 8px; }
+
+  .qa details {
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .qa details[open] { background: var(--surface); }
+
+  .qa summary {
+    cursor: pointer;
+    list-style: none;
+    padding: 15px 14px 15px 36px;
+    position: relative;
+    font-family: var(--font-ui);
+    font-size: 15.5px;
+    font-weight: 600;
+    line-height: 1.4;
+    color: var(--ink);
+  }
+
+  .qa summary::-webkit-details-marker { display: none; }
+
+  .qa summary::before {
+    content: "+";
+    position: absolute;
+    left: 14px;
+    top: 15px;
+    font-family: var(--font-display);
+    font-size: 15px;
+    color: var(--accent-ink);
+  }
+
+  .qa details[open] summary::before { content: "\2212"; }
+  .qa summary:hover { color: var(--accent-ink); }
+  .qa summary:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+  .qa .answer { padding: 0 20px 20px 36px; max-width: 72ch; }
+  .qa .answer p { margin: 0 0 13px; }
+  .qa .answer p:last-child { margin-bottom: 0; }
+
+  /* ---------- stat row ---------- */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1px;
+    background: var(--rule);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    margin: 24px 0 8px;
+    overflow: hidden;
+  }
+
+  .stat { background: var(--surface); padding: 16px 18px; }
+
+  .stat .v {
+    font-family: var(--font-display);
+    font-size: 1.6rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.1;
+    color: var(--ink);
+    display: block;
+  }
+
+  .stat .k {
+    font-family: var(--font-display);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    color: var(--ink-faint);
+    margin-top: 7px;
+    display: block;
+  }
+
+  .stat.pending .v { color: var(--ink-faint); }
+
+  /* ---------- code block ---------- */
+  pre {
+    font-family: var(--font-display);
+    font-size: 12.5px;
+    line-height: 1.6;
+    background: var(--sunk);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    padding: 15px 17px;
+    overflow-x: auto;
+    margin: 20px 0;
+    color: var(--ink);
+  }
+
+  pre code { background: none; padding: 0; font-size: inherit; }
+
+  /* ---------- footer ---------- */
+  footer {
+    margin-top: 72px;
+    padding-top: 22px;
+    border-top: 2px solid var(--ink);
+    font-family: var(--font-display);
+    font-size: 11.5px;
+    color: var(--ink-faint);
+    letter-spacing: .04em;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; }
+  }
+</style>
+
+<div class="page">
+
+  <nav class="rail" aria-label="Section index">
+    <div class="rail-label">Contents</div>
+    <ol>
+      <li><a href="#live"><span class="n">01</span><span>What is live</span></a></li>
+      <li><a href="#shape"><span class="n">02</span><span>The shape</span></a></li>
+      <li><a href="#security"><span class="n">03</span><span>Security calls</span></a></li>
+      <li><a href="#pipeline"><span class="n">04</span><span>Build &amp; release</span></a></li>
+      <li><a href="#broke"><span class="n">05</span><span>What broke</span></a></li>
+      <li><a href="#cost"><span class="n">06</span><span>Cost</span></a></li>
+      <li><a href="#runbook"><span class="n">07</span><span>Runbook</span></a></li>
+      <li><a href="#next"><span class="n">08</span><span>At scale</span></a></li>
+      <li><a href="#qa"><span class="n">09</span><span>Questions</span></a></li>
+    </ol>
+  </nav>
+
+  <main>
+
+    <header class="masthead">
+      <p class="eyebrow">Deployment record &middot; CashMatch</p>
+      <h1>Shipping it</h1>
+      <p class="subtitle">An AI cash application agent, deployed to AWS on free-tier
+        infrastructure, entirely from Terraform. What was built, why it is shaped this way,
+        and the three things that broke.</p>
+      <div class="meta">
+        <span class="chip live">Live &middot; 13.235.237.109</span>
+        <span class="chip">ap-south-1 &middot; Mumbai</span>
+        <span class="chip">28 resources &middot; Terraform</span>
+        <span class="chip">~&#8377;0/month</span>
+      </div>
+    </header>
+
+    <!-- ===================================================== 01 -->
+    <section id="live">
+      <h2><span class="n">01</span><span>What is live</span></h2>
+      <div class="rule"></div>
+
+      <div class="measure">
+        <p class="lede">A public URL serving 800 real payment decisions out of a managed
+          Postgres, with the review queue and the explanation panel working end to end.</p>
+      </div>
+
+      <div class="stats">
+        <div class="stat">
+          <span class="v">81.9<span style="font-size:.62em">%</span></span>
+          <span class="k">Auto-match rate, live</span>
+        </div>
+        <div class="stat">
+          <span class="v">100<span style="font-size:.62em">%</span></span>
+          <span class="k">Precision, live</span>
+        </div>
+        <div class="stat">
+          <span class="v">800</span>
+          <span class="k">Payments decided</span>
+        </div>
+        <div class="stat">
+          <span class="v">28</span>
+          <span class="k">Terraform resources</span>
+        </div>
+      </div>
+      <p class="caption">Verified by querying the deployed <code>/api/metrics</code> endpoint,
+        not by reading a local number and assuming it carried over.</p>
+
+      <div class="table-wrap">
+        <table class="data">
+          <thead><tr><th>Endpoint</th><th>What it is</th></tr></thead>
+          <tbody>
+            <tr><td class="key">http://13.235.237.109</td><td>The review queue and dashboard</td></tr>
+            <tr><td class="key">/api/docs</td><td>Interactive OpenAPI documentation</td></tr>
+            <tr><td class="key">/api/metrics</td><td>Dashboard figures as JSON</td></tr>
+            <tr><td class="key">/health/db</td><td>Readiness &mdash; round-trips a real query</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout">
+        <p><strong>Plain HTTP, and that is a gap, not an oversight.</strong> TLS needs a
+          domain name; an Elastic IP cannot have a certificate issued against it. The honest
+          fix is a domain plus an ACM certificate on a load balancer, and an ALB is the one
+          component here that is not free tier. The deployment is a demonstration, and
+          pretending otherwise by hand-rolling a self-signed certificate would be worse than
+          saying so.</p>
+      </div>
+    </section>
+
+    <!-- ===================================================== 02 -->
+    <section id="shape">
+      <h2><span class="n">02</span><span>The shape</span></h2>
+      <div class="rule"></div>
+
+      <figure>
+        <svg viewBox="0 0 960 440" role="img"
+             aria-label="AWS architecture: an internet gateway routes to an EC2 instance in a public subnet running two containers; the instance reaches an RDS Postgres in two private subnets that have no route to the internet; secrets come from SSM Parameter Store and images from ECR.">
+          <defs>
+            <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7"
+                    orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"></path>
+            </marker>
+          </defs>
+
+          <text class="svg-sub" x="20" y="22">Internet</text>
+          <rect class="svg-box" x="14" y="32" width="120" height="40" rx="2"></rect>
+          <text class="svg-title" x="74" y="57" text-anchor="middle">Browser</text>
+
+          <!-- VPC -->
+          <rect x="180" y="14" width="600" height="340" rx="4" fill="none"
+                stroke="currentColor" stroke-dasharray="5 4" opacity="0.35"></rect>
+          <text class="svg-sub" x="192" y="32">VPC  10.0.0.0/16</text>
+
+          <!-- public subnet -->
+          <rect x="198" y="48" width="280" height="150" rx="3" fill="none"
+                stroke="currentColor" stroke-dasharray="3 3" opacity="0.5"></rect>
+          <text class="svg-sub" x="208" y="66">public subnet  10.0.1.0/24</text>
+
+          <rect class="svg-box-key" x="212" y="78" width="250" height="104" rx="2"></rect>
+          <text class="svg-title" x="337" y="100" text-anchor="middle">EC2 t3.micro</text>
+          <text class="svg-sub" x="337" y="118" text-anchor="middle">nginx + React bundle  :80</text>
+          <text class="svg-sub" x="337" y="134" text-anchor="middle">FastAPI + uvicorn  :8000</text>
+          <text class="svg-sub" x="337" y="156" text-anchor="middle">no inbound port 22</text>
+          <text class="svg-sub" x="337" y="172" text-anchor="middle">IMDSv2 required</text>
+
+          <!-- private subnets -->
+          <rect x="198" y="214" width="280" height="126" rx="3" fill="none"
+                stroke="currentColor" stroke-dasharray="3 3" opacity="0.5"></rect>
+          <text class="svg-sub" x="208" y="232">private subnets  10.0.11-12.0/24</text>
+
+          <rect class="svg-box" x="212" y="244" width="250" height="82" rx="2"></rect>
+          <text class="svg-title" x="337" y="266" text-anchor="middle">RDS Postgres 16</text>
+          <text class="svg-sub" x="337" y="284" text-anchor="middle">db.t3.micro &middot; encrypted</text>
+          <text class="svg-sub" x="337" y="302" text-anchor="middle">no public route, no egress</text>
+          <text class="svg-sub" x="337" y="318" text-anchor="middle">two AZs for the subnet group</text>
+
+          <line class="svg-edge-key" x1="337" y1="182" x2="337" y2="238"
+                marker-end="url(#ah)"></line>
+          <text class="svg-lab-key" x="348" y="214">5432, from the app security group only</text>
+
+          <!-- IGW -->
+          <rect class="svg-box" x="140" y="90" width="52" height="80" rx="2"></rect>
+          <text class="svg-sub" x="166" y="126" text-anchor="middle">I</text>
+          <text class="svg-sub" x="166" y="140" text-anchor="middle">G</text>
+          <text class="svg-sub" x="166" y="154" text-anchor="middle">W</text>
+          <line class="svg-edge" x1="134" y1="52" x2="166" y2="52" marker-end="url(#ah)"></line>
+          <polyline class="svg-edge" points="166,52 166,86" marker-end="url(#ah)"></polyline>
+          <line class="svg-edge" x1="192" y1="130" x2="206" y2="130" marker-end="url(#ah)"></line>
+
+          <!-- regional services -->
+          <rect class="svg-box" x="520" y="78" width="232" height="56" rx="2"></rect>
+          <text class="svg-title" x="636" y="100" text-anchor="middle">ECR</text>
+          <text class="svg-sub" x="636" y="118" text-anchor="middle">api 124 MB &middot; ui 21 MB</text>
+
+          <rect class="svg-box" x="520" y="150" width="232" height="56" rx="2"></rect>
+          <text class="svg-title" x="636" y="172" text-anchor="middle">SSM Parameter Store</text>
+          <text class="svg-sub" x="636" y="190" text-anchor="middle">SecureString &times; 2</text>
+
+          <rect class="svg-box" x="520" y="222" width="232" height="56" rx="2"></rect>
+          <text class="svg-title" x="636" y="244" text-anchor="middle">SSM Session Manager</text>
+          <text class="svg-sub" x="636" y="262" text-anchor="middle">shell, audited, no port</text>
+
+          <line class="svg-edge" x1="462" y1="106" x2="514" y2="106" marker-end="url(#ah)"></line>
+          <line class="svg-edge" x1="462" y1="130" x2="514" y2="178" marker-end="url(#ah)"></line>
+          <line class="svg-edge-soft" x1="462" y1="150" x2="514" y2="250"
+                marker-end="url(#ah)"></line>
+
+          <text class="svg-lab" x="470" y="100">pull</text>
+          <text class="svg-lab" x="470" y="330">all three reached through one IAM instance role</text>
+
+          <!-- EIP -->
+          <rect class="svg-box" x="14" y="100" width="120" height="44" rx="2"></rect>
+          <text class="svg-title" x="74" y="120" text-anchor="middle">Elastic IP</text>
+          <text class="svg-sub" x="74" y="136" text-anchor="middle">13.235.237.109</text>
+
+          <text class="svg-lab" x="480" y="380" text-anchor="middle">No NAT gateway. The private subnets have no route out, which is both a saving and a control.</text>
+        </svg>
+        <figcaption>Teal marks the path a request actually takes. The database sits in subnets
+          with no route to the internet gateway &mdash; not merely firewalled off, but
+          unreachable by routing.</figcaption>
+      </figure>
+
+      <h3>Why this shape and not another</h3>
+
+      <div class="table-wrap">
+        <table class="data">
+          <thead><tr><th>Choice</th><th>Reasoning</th></tr></thead>
+          <tbody>
+            <tr>
+              <td class="key">EC2 + RDS,<br>not ECS Fargate</td>
+              <td>Fargate and an Application Load Balancer are the textbook answer and
+                neither is free tier &mdash; together about &#8377;4,000 a month to leave
+                running. For a portfolio deployment the architecture conversation is worth
+                more than the orchestration, and the conversation is identical. What the
+                shape costs is covered under <a href="#next">At scale</a>.</td>
+            </tr>
+            <tr>
+              <td class="key">RDS,<br>not Postgres in a container</td>
+              <td>A container on the same box would have been simpler and free. RDS buys
+                automated backups, a restore path, and the ability to put the database
+                somewhere the application host cannot be reached <em>from</em>. The free tier
+                covers it, so the simpler option saves nothing.</td>
+            </tr>
+            <tr>
+              <td class="key">No NAT gateway</td>
+              <td>At roughly &#8377;2,700 a month it would have cost more than everything
+                else combined, to give internet access to a database that has no reason to
+                want any. Its absence is a control: a compromised database host cannot
+                exfiltrate anything, because there is no route.</td>
+            </tr>
+            <tr>
+              <td class="key">One instance,<br>not an auto-scaling group</td>
+              <td>Defensible only because the instance holds no state. Everything durable is
+                in RDS; the box can be terminated and rebuilt from the Terraform in about
+                four minutes. That is what makes a single instance an acceptable answer
+                rather than a pet.</td>
+            </tr>
+            <tr>
+              <td class="key">ap-south-1</td>
+              <td>Mumbai. The data is an Indian distributor's receivables book and the users
+                would be in India. Latency follows the users, not the engineer.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ===================================================== 03 -->
+    <section id="security">
+      <h2><span class="n">03</span><span>Security calls</span></h2>
+      <div class="rule"></div>
+
+      <div class="measure">
+        <p>None of these are expensive. They are the difference between infrastructure that
+          would survive a review and infrastructure that happens to work.</p>
+      </div>
+
+      <div class="table-wrap">
+        <table class="data">
+          <thead><tr><th>Decision</th><th>Instead of</th><th>Why</th></tr></thead>
+          <tbody>
+            <tr>
+              <td class="key">No port 22,<br>no key pair</td>
+              <td>An SSH ingress rule and a <code>.pem</code> file</td>
+              <td>Shell access is SSM Session Manager. No inbound port to scan, no key to
+                lose or share, and every session recorded in CloudTrail. An open SSH port on
+                a demo box is a liability with no compensating benefit.</td>
+            </tr>
+            <tr>
+              <td class="key">Database security group<br>references the app group<br>by id</td>
+              <td>A CIDR range</td>
+              <td>The rule says "whatever is running the application may reach Postgres", not
+                "anything in 10.0.1.0/24 may". Replace the instance and the rule still means
+                what it meant.</td>
+            </tr>
+            <tr>
+              <td class="key">Secrets in SSM<br>Parameter Store</td>
+              <td>A <code>.env</code> file baked into the image</td>
+              <td>The database password is generated by Terraform, written as a SecureString,
+                and read by the instance through its IAM role at boot. It exists in no file
+                anybody edits and in no image layer. Rotating it is a parameter update and a
+                restart.</td>
+            </tr>
+            <tr>
+              <td class="key">IAM policy scoped to<br>two parameter ARNs</td>
+              <td><code>ssm:*</code> on <code>*</code></td>
+              <td>The instance can read exactly the two values this application owns, and
+                decrypt only via the SSM service. It has no business reading anything else in
+                the account, so it cannot.</td>
+            </tr>
+            <tr>
+              <td class="key">IMDSv2 required</td>
+              <td>The default, which still allows v1</td>
+              <td>Instance metadata v1 is reachable by a server-side request forgery bug in
+                the application; v2 requires a PUT to obtain a token first, which SSRF
+                generally cannot do. One line.</td>
+            </tr>
+            <tr>
+              <td class="key">Deployed in<br><code>LLM_MODE=mock</code></td>
+              <td>Shipping a live Gemini key</td>
+              <td>Mock mode exercises the entire extraction pipeline with no key and no
+                network. A public demo has no business holding a credential, and the
+                parameter is a deliberate placeholder.</td>
+            </tr>
+            <tr>
+              <td class="key">Encryption at rest<br>on both volumes</td>
+              <td>Unencrypted defaults</td>
+              <td>Two booleans. There is no argument for the other choice.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout caution">
+        <p><strong>What is still missing, stated plainly:</strong> no TLS, because an Elastic
+          IP cannot hold a certificate; no WAF; no authentication on the API, so anyone with
+          the address can approve a review item; CloudTrail and VPC flow logs are off; and
+          the single instance is a single point of failure. Every one of those is a
+          deliberate scope decision for a demonstration rather than an oversight &mdash; and
+          an interviewer who asks about any of them deserves this list rather than a
+          surprise.</p>
+      </div>
+    </section>
+
+    <!-- ===================================================== 04 -->
+    <section id="pipeline">
+      <h2><span class="n">04</span><span>Build and release</span></h2>
+      <div class="rule"></div>
+
+      <div class="measure">
+        <p><strong>Images are built on a developer machine and pulled by the instance.</strong>
+          A deploy is therefore a pull, never a build.</p>
+        <p>Two reasons, and the second is the real one. A t3.micro has 1&nbsp;GB of RAM, which
+          is comfortably enough to run this stack and nowhere near enough to run
+          <code>npm&nbsp;ci</code> and a Vite build. And more importantly, deploying the exact
+          bytes that were tested is worth more than the convenience of building on the
+          target: a build that happens twice can differ twice.</p>
+      </div>
+
+      <pre><code>./deploy.sh
+
+  --&gt; authenticate to ECR
+  --&gt; docker build -f backend/Dockerfile.prod   548 MB  (124 MB compressed)
+  --&gt; docker build frontend                      74 MB  ( 21 MB compressed)
+  --&gt; docker push  &times;2
+  --&gt; aws ssm send-command  "systemctl start cashmatch-refresh"
+        which runs: docker compose pull &amp;&amp; docker compose up -d</code></pre>
+
+      <div class="measure">
+        <p>The release step is an SSM command rather than an SSH script, for the same reason
+          there is no port 22. It is auditable and needs no credentials on the developer
+          machine beyond the ones AWS already has.</p>
+      </div>
+
+      <h3>Two production-readiness changes the deploy forced</h3>
+
+      <div class="table-wrap">
+        <table class="data">
+          <thead><tr><th>Change</th><th>Why it was needed</th></tr></thead>
+          <tbody>
+            <tr>
+              <td class="key">Settings normalises<br><code>postgres://</code></td>
+              <td>Render, Heroku, Railway and Fly all emit <code>postgres://</code>.
+                SQLAlchemy 2.x dropped that alias and this project pins psycopg 3, so the URL
+                needs an explicit driver. Normalising in one place rather than asking every
+                deployment to hand-edit an environment variable is what makes the same image
+                run anywhere.</td>
+            </tr>
+            <tr>
+              <td class="key">A self-seeding<br>entrypoint</td>
+              <td>A managed platform gives you one process and no shell during a deploy. The
+                entrypoint runs migrations, seeds the demo dataset <em>only if the database is
+                empty</em>, and then serves. A fresh deploy comes up with data in it; a
+                restart changes nothing.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="measure">
+        <p>Both changes also made the project deployable to Render from the same repository
+          &mdash; a <code>render.yaml</code> blueprint is committed alongside the Terraform.
+          Portability was not the goal; it was the by-product of not hard-coding assumptions
+          about one host.</p>
+      </div>
+    </section>
+
+    <!-- ===================================================== 05 -->
+    <section id="broke">
+      <h2><span class="n">05</span><span>What broke</span></h2>
+      <div class="rule"></div>
+
+      <div class="measure">
+        <p class="lede">Three failures, and only one of them was a bug. Telling them apart was
+          most of the work.</p>
+      </div>
+
+      <h3>1. The network, twice &mdash; not a bug</h3>
+
+      <div class="measure">
+        <p>A 548&nbsp;MB image push died with <code>write: broken pipe</code>, and Terraform
+          lost its connection while polling RDS: <code>dial tcp: lookup
+          rds.ap-south-1.amazonaws.com: no such host</code>.</p>
+        <p>Neither was a configuration problem, and the important move was establishing that
+          before changing anything. Querying AWS directly showed RDS <code>available</code>
+          and the UI image already in ECR &mdash; so the state was further along than the
+          error messages implied. The fix was a retry loop around the push, which succeeded
+          on the second attempt. <strong>Changing code to fix a dropped TCP connection would
+          have introduced a real bug while chasing a phantom one.</strong></p>
+      </div>
+
+      <h3>2. Alembic rejecting the database password &mdash; a real bug</h3>
+
+      <pre><code>ValueError: invalid interpolation syntax in
+'postgresql+psycopg://cashmatch:WLDr%29Y8I%29X-%7BhvR%28OTO_g1%7D7NnF%7DKS%23D@...'
+at position 35</code></pre>
+
+      <div class="measure">
+        <p>Terraform generates a 32-character password with special characters, and the URL
+          encodes them &mdash; <code>%29</code>, <code>%7B</code>, <code>%23</code>. Alembic's
+          <code>env.py</code> passed that URL to <code>config.set_main_option()</code>, which
+          routes through Python's <code>ConfigParser</code>, which treats <code>%</code> as
+          interpolation syntax and refuses the whole string.</p>
+        <p><strong>Any securely generated password breaks this.</strong> It never surfaced
+          locally because the development password is <code>cashmatch</code>.</p>
+      </div>
+
+      <div class="callout">
+        <p>The tempting fix is to escape the percent signs, or to restrict the password
+          charset. Both work and both would break again the next time somebody touched that
+          file, because the hazard would still be there.</p>
+        <p>The fix taken was to stop routing the URL through ConfigParser at all:
+          <code>create_engine(url)</code> directly, instead of
+          <code>engine_from_config()</code> reading the value back out of a parsed ini
+          section. The config file is still used for logging; it is simply no longer asked to
+          carry a secret it was never designed to hold.</p>
+      </div>
+
+      <h3>3. A live site with an empty database &mdash; the worst kind</h3>
+
+      <div class="measure">
+        <p>The deploy came up healthy, served HTTP 200, and reported zero payments. Nothing
+          errored anywhere.</p>
+        <p>The bootstrap script wrote a compose file with a <code>command:</code> override
+          that ran migrations and started uvicorn &mdash; which silently replaced the image's
+          entrypoint, the thing that does the seeding. Two mechanisms for the same job, one
+          quietly shadowing the other.</p>
+        <p>This is the failure mode worth dwelling on in an interview. A crash is cheap: it
+          tells you where to look. A green health check over an empty database tells you
+          nothing, and would have been found by a user rather than by the deploy.</p>
+      </div>
+    </section>
+
+    <!-- ===================================================== 06 -->
+    <section id="cost">
+      <h2><span class="n">06</span><span>Cost</span></h2>
+      <div class="rule"></div>
+
+      <div class="table-wrap">
+        <table class="data">
+          <thead>
+            <tr><th>Resource</th><th>Free tier</th><th class="num">After free tier</th></tr>
+          </thead>
+          <tbody>
+            <tr><td class="key">EC2 t3.micro</td><td>750 hours a month</td>
+                <td class="num">~&#8377;700/mo</td></tr>
+            <tr><td class="key">RDS db.t3.micro</td><td>750 hours + 20 GB</td>
+                <td class="num">~&#8377;1,300/mo</td></tr>
+            <tr><td class="key">EBS gp3, 20 GB</td><td>30 GB</td>
+                <td class="num">~&#8377;150/mo</td></tr>
+            <tr><td class="key">Elastic IP</td><td>Free while attached</td>
+                <td class="num">~&#8377;300/mo if idle</td></tr>
+            <tr><td class="key">ECR, ~145 MB</td><td>500 MB</td>
+                <td class="num">~&#8377;1/mo</td></tr>
+            <tr><td class="key">SSM, CloudWatch basic</td><td>Free</td>
+                <td class="num">&#8377;0</td></tr>
+            <tr><td class="key"><strong>Total</strong></td><td><strong>&#8377;0</strong></td>
+                <td class="num"><strong>~&#8377;2,450/mo</strong></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout caution">
+        <p><strong>An Elastic IP is free only while attached to a running instance.</strong>
+          Detach it, or stop the instance and leave the address allocated, and it starts
+          billing immediately. It is the single most common way a "free" AWS account quietly
+          starts charging, which is why the address is bound to the instance in Terraform
+          rather than allocated loose.</p>
+        <p><code>terraform destroy</code> removes all 28 resources and returns the bill to
+          zero. That is the real argument for infrastructure as code on a personal account:
+          not reproducibility, but a reliable off switch.</p>
+      </div>
+
+      <div class="measure">
+        <p>For comparison, the ECS Fargate and ALB shape would run about
+          <strong>&#8377;4,000&ndash;5,800 a month</strong> and none of it is free tier
+          &mdash; the load balancer alone is roughly &#8377;1,600 whether anything is using it
+          or not.</p>
+      </div>
+    </section>
+
+    <!-- ===================================================== 07 -->
+    <section id="runbook">
+      <h2><span class="n">07</span><span>Runbook</span></h2>
+      <div class="rule"></div>
+
+      <h4>Stand it up from nothing</h4>
+      <pre><code>cd infra
+terraform init
+terraform apply -target=aws_ecr_repository.api -target=aws_ecr_repository.ui
+cd .. &amp;&amp; ./deploy.sh      # build and push, so images exist before the instance boots
+cd infra &amp;&amp; terraform apply</code></pre>
+
+      <h4>Ship a change</h4>
+      <pre><code>./deploy.sh                # build, push, and roll the instance</code></pre>
+
+      <h4>Get a shell &mdash; no SSH, no key</h4>
+      <pre><code>aws ssm start-session --target $(terraform -chdir=infra output -raw instance_id)</code></pre>
+
+      <h4>When the site does not answer</h4>
+      <pre><code>/var/log/user-data.log                      # bootstrap; always look here first
+cd /opt/cashmatch &amp;&amp; docker compose ps     # are both containers up and healthy?
+docker compose logs api --tail 50          # the API is what fails; nginx rarely does</code></pre>
+
+      <h4>Reseed the demo data</h4>
+      <pre><code>docker compose exec api python -m cashmatch.cli generate --reset
+docker compose exec api python -m cashmatch.cli extract
+docker compose exec api python -m cashmatch.cli apply</code></pre>
+
+      <h4>Turn the bill off</h4>
+      <pre><code>cd infra &amp;&amp; terraform destroy</code></pre>
+    </section>
+
+    <!-- ===================================================== 08 -->
+    <section id="next">
+      <h2><span class="n">08</span><span>At scale</span></h2>
+      <div class="rule"></div>
+
+      <div class="measure">
+        <p>What this deployment would need to become if it carried a real distributor's
+          receivables, roughly in the order the pain would arrive.</p>
+      </div>
+
+      <div class="table-wrap">
+        <table class="data">
+          <thead><tr><th>Change</th><th>What it buys, and when it starts to matter</th></tr></thead>
+          <tbody>
+            <tr>
+              <td class="key">TLS and a domain</td>
+              <td>Route 53 plus an ACM certificate on an ALB. First thing, and non-negotiable
+                the moment anyone types a password into this. Currently blocked only by the
+                fact that a certificate cannot be issued for a bare IP.</td>
+            </tr>
+            <tr>
+              <td class="key">Authentication</td>
+              <td>Right now anyone with the address can approve a review item and move cash.
+                Cognito or an OIDC provider, mapped onto the <code>reviewed_by</code> field
+                the schema already carries.</td>
+            </tr>
+            <tr>
+              <td class="key">ECS Fargate behind<br>an ALB</td>
+              <td>Rolling deploys with no downtime, health-check-driven replacement, and
+                horizontal scale. The application is already stateless and containerised, so
+                this is a change of runtime rather than of architecture.</td>
+            </tr>
+            <tr>
+              <td class="key">RDS Multi-AZ<br>and PITR</td>
+              <td>One boolean and a retention setting. The moment the ledger matters, a
+                single-AZ database with one day of backups is not a defensible position.</td>
+            </tr>
+            <tr>
+              <td class="key">CI/CD</td>
+              <td>GitHub Actions running the 489 tests, building, pushing to ECR via OIDC
+                rather than long-lived keys, and deploying on green. The repository is
+                already public and the test suite needs no credentials, so this is close to
+                free.</td>
+            </tr>
+            <tr>
+              <td class="key">Observability</td>
+              <td>CloudWatch Logs for the containers, VPC flow logs, an alarm on the
+                <strong>precision</strong> metric rather than on CPU. The number that matters
+                operationally is whether the engine is still right, and nothing on this box
+                would currently notice if it stopped being.</td>
+            </tr>
+            <tr>
+              <td class="key">Terraform remote state</td>
+              <td>S3 with DynamoDB locking. State is currently a local file, which is fine
+                for one engineer and actively dangerous for two.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ===================================================== 09 -->
+    <section id="qa">
+      <h2><span class="n">09</span><span>Questions this invites</span></h2>
+      <div class="rule"></div>
+
+      <div class="qa">
+        <details>
+          <summary>Why not ECS or Kubernetes?</summary>
+          <div class="answer">
+            <p>Cost, and honesty about what the deployment is for. Fargate plus an ALB is
+              about &#8377;4,000 a month with nothing on it, and this is a portfolio
+              demonstration that should cost nothing to leave running.</p>
+            <p>The architectural reasoning does not change: the application is stateless and
+              containerised, all state is in RDS, and configuration comes from the
+              environment. Moving to ECS is a change of runtime, not a redesign &mdash; which
+              is itself the thing worth demonstrating. Kubernetes for one service with one
+              instance would be a costume, not an architecture.</p>
+          </div>
+        </details>
+
+        <details>
+          <summary>A single instance is a single point of failure. Why is that acceptable?</summary>
+          <div class="answer">
+            <p>Because the instance holds nothing. Everything durable lives in RDS; the box
+              runs two containers pulled from ECR and configured from SSM. Terminate it and
+              Terraform rebuilds an identical one in about four minutes.</p>
+            <p>That is the property that separates a disposable instance from a pet, and it is
+              worth being precise about: the problem with a single instance is not that it can
+              die, it is that dying might lose something. Here it cannot. For production I
+              would still want an auto-scaling group across two AZs behind a load balancer
+              &mdash; but for availability, not for data safety.</p>
+          </div>
+        </details>
+
+        <details>
+          <summary>Why is there no NAT gateway?</summary>
+          <div class="answer">
+            <p>Because nothing needs one. The only thing in the private subnets is RDS, which
+              has no reason to originate a connection to the internet. A NAT gateway would
+              have cost roughly &#8377;2,700 a month &mdash; more than every other resource
+              combined &mdash; to provide a capability that is a liability.</p>
+            <p>Its absence is a security control as much as a saving. There is no route out of
+              those subnets, so there is no exfiltration path, regardless of what any
+              application bug might want to do.</p>
+          </div>
+        </details>
+
+        <details>
+          <summary>How do you get a shell on the box?</summary>
+          <div class="answer">
+            <p>SSM Session Manager: <code>aws ssm start-session --target i-05652e7f3b8058075</code>.
+              There is no inbound port 22 and no key pair at all.</p>
+            <p>It is better on three counts and worse on none. Nothing to scan, because the
+              port does not exist. Nothing to lose, because there is no private key. And every
+              session is recorded in CloudTrail with the IAM identity that opened it, which an
+              SSH key shared between two engineers can never tell you.</p>
+          </div>
+        </details>
+
+        <details>
+          <summary>Walk me through a failure you hit.</summary>
+          <div class="answer">
+            <p>The one worth telling is the third, because nothing went wrong visibly. The
+              deploy succeeded, the health check was green, and the site served an empty
+              database.</p>
+            <p>The bootstrap script wrote a compose file with a <code>command:</code> override
+              that started the server directly &mdash; which silently shadowed the image's
+              entrypoint, the thing that runs migrations and seeds. Two mechanisms doing the
+              same job, one quietly winning.</p>
+            <p>A crash would have been cheaper: it points at a line. A green health check over
+              an empty database points nowhere, and in a real deployment would have been found
+              by a user rather than by me. The fix was to delete the override and let one
+              mechanism own startup.</p>
+          </div>
+        </details>
+
+        <details>
+          <summary>Something is broken in production. What do you do first?</summary>
+          <div class="answer">
+            <p>Establish whether the thing that looks broken actually is. On this deploy two of
+              three failures were a dropped TCP connection wearing a config error's clothing
+              &mdash; and querying AWS directly showed the state was further along than the
+              error implied.</p>
+            <p>Then, in order: <code>/var/log/user-data.log</code> for anything at boot,
+              <code>docker compose ps</code> for container health, <code>docker compose logs
+              api</code> for the application. The API is what fails; nginx serving static
+              files almost never does.</p>
+            <p>Changing code in response to a network error is how a real bug gets introduced
+              while chasing a phantom one.</p>
+          </div>
+        </details>
+
+        <details>
+          <summary>What would you fix first if this were real?</summary>
+          <div class="answer">
+            <p>TLS and authentication, in that order, and before anything architectural. Right
+              now the traffic is plaintext and anyone with the IP address can approve a review
+              item &mdash; which in this application means moving money against a customer
+              account.</p>
+            <p>Everything else on the list &mdash; Multi-AZ, ECS, CI/CD, observability &mdash;
+              is about scale and operability. Those two are about whether it should be
+              reachable by the public at all.</p>
+          </div>
+        </details>
+
+        <details>
+          <summary>How much did this cost?</summary>
+          <div class="answer">
+            <p>Nothing. Every resource is free-tier eligible except about &#8377;1 a month of
+              ECR storage above the 500&nbsp;MB allowance.</p>
+            <p>The thing to watch is the Elastic IP: free while attached to a running instance,
+              billed the moment it is not. That is the most common way a free AWS account
+              quietly starts charging, which is why it is bound to the instance in Terraform
+              rather than allocated loose &mdash; and why <code>terraform destroy</code>
+              exists as a reliable off switch rather than a cleanup chore.</p>
+          </div>
+        </details>
+      </div>
+    </section>
+
+    <footer>
+      CashMatch &middot; deployment record &middot; ap-south-1 &middot; 7 October 2026
+    </footer>
+
+  </main>
+</div>

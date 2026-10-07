@@ -198,6 +198,7 @@
   }
 
   .chip.live { border-color: var(--good); color: var(--good); background: var(--good-wash); }
+  a.chip { text-decoration: none; }
 
   /* ---------- sections ---------- */
   section { padding-top: 64px; scroll-margin-top: 24px; }
@@ -569,7 +570,8 @@
       <p class="subtitle">An AI cash application agent: match incoming B2B bank payments to the
         open invoices they settle, apply cash when confident, review when not.</p>
       <div class="meta">
-        <span class="chip live">All 8 phases complete</span>
+        <a class="chip live" href="http://13.235.237.109">Live &middot; 13.235.237.109</a>
+        <span class="chip">All 8 phases complete</span>
         <span class="chip">Python 3.13 &middot; FastAPI &middot; SQLAlchemy 2</span>
         <span class="chip">PostgreSQL 16</span>
         <span class="chip">Gemini (optional)</span>
@@ -2214,6 +2216,13 @@ base 0.600 ÷ applicable weight 0.86 → confidence 60.0% · excluded: remittanc
           deployment receives CAMT.053 or MT940 from the bank, and swapping the parser is the
           whole of that change: everything downstream takes transaction rows and does not care
           where they came from.</p>
+        <p>It is deployed, on AWS in ap-south-1, entirely from Terraform &mdash; a t3.micro in a
+          public subnet, RDS Postgres in private subnets with no route to the internet, images
+          pulled from ECR, secrets from SSM Parameter Store, and no inbound SSH port at all.
+          The architecture, the security decisions, the cost breakdown and the three things that
+          broke on the way are a companion document:
+          <a href="https://claude.ai/code/artifact/7e942992-9053-4a62-9ace-b7dc67062fb0">the
+          deployment record</a>.</p>
       </div>
     </section>
 
