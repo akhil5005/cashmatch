@@ -1,0 +1,43 @@
+# Line endings.
+#
+# This repository is developed on Windows and runs on Linux, which is a
+# combination that can produce a file that looks fine in an editor and fails
+# on a server. A shell script with CRLF endings has a shebang of
+# `#!/bin/bash\r`, and the kernel looks for an interpreter with a carriage
+# return in its name, finds nothing, and the script never starts. Nothing
+# reports a line-ending problem, because nothing can tell the difference
+# between that and a missing interpreter.
+#
+# It has already happened once here: an edit through a Windows text API
+# rewrote infra/user_data.sh with CRLF, and the next instance replacement
+# would have booted a host whose bootstrap could not run at all.
+#
+# So: normalise text in the repository, and force LF on everything that is
+# read by a Linux kernel, a shell, or a container.
+
+* text=auto
+
+*.sh            text eol=lf
+*.yml           text eol=lf
+*.yaml          text eol=lf
+*.tf            text eol=lf
+*.template      text eol=lf
+*.conf          text eol=lf
+Dockerfile*     text eol=lf
+Makefile        text eol=lf
+*.py            text eol=lf
+*.js            text eol=lf
+*.jsx           text eol=lf
+*.css           text eol=lf
+*.html          text eol=lf
+*.json          text eol=lf
+*.md            text eol=lf
+*.ini           text eol=lf
+*.toml          text eol=lf
+.env.example    text eol=lf
+
+# Keep binaries out of it.
+*.pdf           binary
+*.png           binary
+*.jpg           binary
+*.ico           binary
