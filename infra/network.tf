@@ -99,17 +99,54 @@ resource "aws_db_subnet_group" "main" {
 # may". Replace the instance and the rule still means what it meant.
 # ---------------------------------------------------------------------------
 
+# CloudFront's origin-facing address ranges, published by AWS per region.
+data "aws_ec2_managed_prefix_list" "cloudfront_origin" {
+  name = "com.amazonaws.global.cloudfront.origin-facing"
+}
+
 resource "aws_security_group" "app" {
   name        = "${var.name}-app"
   description = "CashMatch application host"
   vpc_id      = aws_vpc.main.id
 
-  ingress {
-    description = "The review UI, served by nginx"
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+  # Where port 80 may be reached from depends on whether CloudFront is
+  # actually in front. With the edge there, every viewer request arrives
+  # through it and TLS terminates there, so the instance has no reason to
+  # accept a connection from anywhere else -- an origin only CloudFront can
+  # reach cannot be port-scanned, fingerprinted, or hit directly over plain
+  # HTTP by a viewer who would rather skip the encryption. AWS publishes and
+  # maintains the prefix list, which is the point: hard-coding CloudFront's
+  # ranges would mean tracking them by hand forever.
+  #
+  # The list is necessary but not sufficient -- it admits *every* CloudFront
+  # distribution, including one belonging to someone else who has learned
+  # this address. nginx closes that with a shared secret; see the
+  # X-Origin-Verify header in cdn.tf and frontend/default.conf.template.
+  dynamic "ingress" {
+    for_each = var.enable_cdn ? [1] : []
+
+    content {
+      description     = "Plain HTTP, from CloudFront edge locations only"
+      from_port       = 80
+      to_port         = 80
+      protocol        = "tcp"
+      prefix_list_ids = [data.aws_ec2_managed_prefix_list.cloudfront_origin.id]
+    }
+  }
+
+  # And without it, that same narrowing is what takes the site off the
+  # internet: the prefix list admits only CloudFront, so with no distribution
+  # there is no route in at all. Open is the honest state while that is true.
+  dynamic "ingress" {
+    for_each = var.enable_cdn ? [] : [1]
+
+    content {
+      description = "Plain HTTP, open to the internet -- no CDN in front yet"
+      from_port   = 80
+      to_port     = 80
+      protocol    = "tcp"
+      cidr_blocks = ["0.0.0.0/0"]
+    }
   }
 
   # Deliberately no port 22. Shell access is via SSM Session Manager, which

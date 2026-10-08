@@ -37,6 +37,22 @@ variable "db_storage_gb" {
   default     = 20
 }
 
+# The CDN is written and correct, but a brand-new AWS account cannot create a
+# CloudFront distribution: CreateDistribution returns AccessDenied with "Your
+# account must be verified before you can add new CloudFront resources", and
+# clearing that needs an AWS Support ticket. Rather than leave half-applied
+# infrastructure behind -- a security group narrowed to CloudFront's prefix
+# list with no CloudFront in front of it locks the site away from everyone --
+# the whole arrangement hangs off this one flag.
+#
+# false: port 80 open, nginx's origin check inert, served over plain HTTP.
+# true : distribution created, port 80 narrowed to the edge, secret enforced.
+variable "enable_cdn" {
+  description = "Put CloudFront in front of the instance. Requires a CloudFront-verified AWS account."
+  type        = bool
+  default     = false
+}
+
 variable "llm_mode" {
   description = <<-EOT
     mock (default), live or off. Deployed as `mock` deliberately: the public

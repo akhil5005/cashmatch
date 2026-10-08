@@ -6,7 +6,7 @@
 # Why a static site rather than the nginx container used locally: Render
 # serves static assets from its own CDN for free and terminates TLS, so the
 # nginx layer earns nothing here. The rewrite rule below does the same job as
-# `proxy_pass` in nginx.conf — one origin for the browser, so CORS never
+# `proxy_pass` in default.conf.template — one origin for the browser, so CORS never
 # enters the picture.
 #
 # Render builds from this repository on its own machines. That is the point:

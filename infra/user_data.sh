@@ -51,6 +51,16 @@ DATABASE_URL="$(aws ssm get-parameter --region "$REGION" \
   --name "/$NAME/database_url" --with-decryption --query Parameter.Value --output text)"
 GEMINI_API_KEY="$(aws ssm get-parameter --region "$REGION" \
   --name "/$NAME/gemini_api_key" --with-decryption --query Parameter.Value --output text)"
+# The origin secret only means anything when CloudFront is in front and
+# attaching it to each origin request. With no distribution, nothing carries
+# the header, so nginx must not demand one -- and an empty value is how it is
+# told that, the same way local development leaves it unset.
+if [ "${enable_cdn}" = "true" ]; then
+  ORIGIN_SECRET="$(aws ssm get-parameter --region "$REGION" \
+    --name "/$NAME/origin_verify" --with-decryption --query Parameter.Value --output text)"
+else
+  ORIGIN_SECRET=""
+fi
 
 install -d -m 0750 /opt/cashmatch
 cat > /opt/cashmatch/.env <<EOF
@@ -61,6 +71,14 @@ DATA_DIR=/data
 LOG_LEVEL=INFO
 EOF
 chmod 0600 /opt/cashmatch/.env
+
+# nginx gets its own file rather than sharing the API's. The API has no use
+# for the origin secret and nginx has no business holding a database
+# password; a shared env_file would hand each of them the other's.
+cat > /opt/cashmatch/ui.env <<EOF
+ORIGIN_SECRET=$ORIGIN_SECRET
+EOF
+chmod 0600 /opt/cashmatch/ui.env
 
 echo "=== compose file ==="
 cat > /opt/cashmatch/docker-compose.yml <<EOF
@@ -86,11 +104,19 @@ services:
   ui:
     image: $UI_IMAGE
     restart: unless-stopped
+    env_file: /opt/cashmatch/ui.env
     ports:
       - "80:80"
     depends_on:
       api:
         condition: service_healthy
+    # /nginx-health sits outside the origin-secret check, because it is
+    # polled from the instance itself and the instance sends no secret.
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost/nginx-health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
 
 volumes:
   cashmatch_data:
@@ -108,7 +134,7 @@ echo "=== waiting for the application to report healthy ==="
 # Migrations and seeding happen inside the container, in entrypoint.sh.
 # Nothing to orchestrate from out here beyond confirming it came up.
 for attempt in $(seq 1 40); do
-  if curl -fsS http://localhost/ >/dev/null 2>&1; then
+  if curl -fsS http://localhost/nginx-health >/dev/null 2>&1; then
     echo "application is serving"
     break
   fi

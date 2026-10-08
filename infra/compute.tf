@@ -45,7 +45,7 @@ resource "aws_iam_role_policy_attachment" "ecr" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
 }
 
-# Read only the two parameters this application owns, and decrypt only with
+# Read only the three parameters this application owns, and decrypt only with
 # the account's default SSM key. Scoped rather than `ssm:*` on `*`, because
 # the instance has no business reading anything else in the account.
 resource "aws_iam_role_policy" "secrets" {
@@ -56,9 +56,13 @@ resource "aws_iam_role_policy" "secrets" {
     Version = "2012-10-17"
     Statement = [
       {
-        Effect   = "Allow"
-        Action   = ["ssm:GetParameter", "ssm:GetParameters"]
-        Resource = [aws_ssm_parameter.database_url.arn, aws_ssm_parameter.gemini_api_key.arn]
+        Effect = "Allow"
+        Action = ["ssm:GetParameter", "ssm:GetParameters"]
+        Resource = [
+          aws_ssm_parameter.database_url.arn,
+          aws_ssm_parameter.gemini_api_key.arn,
+          aws_ssm_parameter.origin_verify.arn,
+        ]
       },
       {
         Effect   = "Allow"
@@ -106,6 +110,7 @@ resource "aws_instance" "app" {
     api_repository = aws_ecr_repository.api.repository_url
     ui_repository  = aws_ecr_repository.ui.repository_url
     llm_mode       = var.llm_mode
+    enable_cdn     = var.enable_cdn ? "true" : "false"
   })
 
   # Re-run the bootstrap when it changes, rather than leaving a stale box.

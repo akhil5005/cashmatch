@@ -1,0 +1,65 @@
+# nginx configuration for the CashMatch review UI.
+#
+# Processed by the official image's envsubst step at container start, which
+# expands ${ORIGIN_SECRET} and leaves nginx's own $variables alone -- it only
+# substitutes the braced form for variables that are actually exported.
+#
+# Two jobs: serve the built single-page app, and proxy /api to the backend so
+# the browser only ever talks to one origin and CORS never enters the picture.
+
+# Does this request carry the shared secret CloudFront attaches to every
+# origin request?
+#
+# The security group already restricts port 80 to CloudFront's origin-facing
+# prefix list, but that list admits *every* CloudFront distribution, including
+# one belonging to somebody else who has learned this address. They could
+# point their own distribution here and serve this app as their own, past
+# every policy we configured. The secret is what makes the origin answer only
+# to our distribution.
+#
+# When ORIGIN_SECRET is unset -- local development, `docker compose up` -- it
+# renders as the empty string, which is exactly what $http_x_origin_verify
+# holds when no such header was sent. So local requests match and pass, and
+# the check costs nothing to leave switched on everywhere.
+map $http_x_origin_verify $origin_rejected {
+    "${ORIGIN_SECRET}" 0;
+    default            1;
+}
+
+server {
+    listen 80;
+    server_name _;
+    root /usr/share/nginx/html;
+
+    # Do not advertise the version in every response.
+    server_tokens off;
+
+    # Readiness for the bootstrap script and the container health check,
+    # deliberately outside the secret check: it is polled from the instance
+    # itself, which has no secret to send, and it discloses nothing.
+    location = /nginx-health {
+        access_log off;
+        add_header Content-Type text/plain always;
+        return 200 "ok\n";
+    }
+
+    # The UI is a single-page app: any unknown path is a client route,
+    # not a 404.
+    location / {
+        if ($origin_rejected) { return 403; }
+        try_files $uri $uri/ /index.html;
+    }
+
+    # Same-origin /api in production, so the browser never needs CORS.
+    location /api/ {
+        if ($origin_rejected) { return 403; }
+
+        proxy_pass http://api:8000/api/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $http_x_forwarded_proto;
+        # Uploads can be a month of statements.
+        client_max_body_size 20m;
+    }
+}

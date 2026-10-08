@@ -4,3 +4,9 @@
 *.tfstate.*
 *.tfvars
 crash.log
+
+# Saved plan files. Disposable, and not safe to commit: a plan embeds the
+# resolved value of every attribute it will set, including the generated
+# origin secret, in plaintext.
+tfplan*
+*.tfplan
